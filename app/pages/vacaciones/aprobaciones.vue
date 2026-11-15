@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 import type { LeaveRequestRow } from '~/types/api'
 
 const { isAdmin } = useSession()
@@ -68,7 +69,7 @@ async function decide(id: string, decision: 'approve' | 'reject', note?: string)
       title="Aprobaciones"
       subtitle="Revisa las solicitudes del equipo. Al aprobar se revalida el saldo y la cobertura del departamento."
     >
-      <UButton to="/vacaciones/calendario" color="neutral" variant="soft" icon="i-lucide-calendar-days">
+      <UButton :to="localePath('/vacaciones/calendario')" color="neutral" variant="soft" icon="i-lucide-calendar-days">
         Calendario
       </UButton>
     </PageHeader>

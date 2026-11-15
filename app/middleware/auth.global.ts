@@ -1,23 +1,34 @@
-const PUBLIC_PATHS = new Set([
-  '/signin',
-  '/signup',
-  '/forgot-password',
-  '/reset-password',
-  '/verify-email',
+/**
+ * Control de acceso global, consciente del idioma.
+ *
+ * Con `prefix_except_default` las rutas de los idiomas no por defecto llevan
+ * prefijo (/en/payroll). Los nombres de ruta que genera @nuxtjs/i18n pueden
+ * llevar sufijo de idioma (`signin___en`), así que se normalizan antes de
+ * comparar; si no, `/signin` no se reconoce como pública y el redirect entra
+ * en bucle.
+ */
+const PUBLIC_ROUTES = new Set([
+  'signin',
+  'signup',
+  'forgot-password',
+  'reset-password',
+  'verify-email',
 ])
 
 /** Rutas que deben seguir accesibles aunque haya sesión iniciada. */
-const ALWAYS_ACCESSIBLE = new Set(['/reset-password', '/verify-email'])
+const ALWAYS_ACCESSIBLE = new Set(['reset-password', 'verify-email'])
 
 /**
- * Rutas de acceso que se muestran también con sesión iniciada.
- *
- * Sin esto, un usuario con la cookie activa era redirigido de `/signin` al
- * panel y no podía volver a la pantalla de entrada para cambiar de cuenta:
- * la página "desaparecía". Ahora se renderiza con un aviso y un botón para
- * ir al panel o cerrar sesión.
+ * Rutas de acceso que se muestran también con sesión iniciada: sin esto, un
+ * usuario con cookie activa no podía volver a la pantalla de entrada.
  */
-const ENTRY_PATHS = new Set(['/signin'])
+const ENTRY_ROUTES = new Set(['signin'])
+
+function baseName(name: unknown): string {
+  if (typeof name !== 'string') return ''
+  const index = name.indexOf('___')
+  return index >= 0 ? name.slice(0, index) : name
+}
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const { state, loaded, refresh } = useSession()
@@ -26,14 +37,25 @@ export default defineNuxtRouteMiddleware(async (to) => {
     await refresh()
   }
 
-  if (PUBLIC_PATHS.has(to.path)) {
-    if (state.value && !ALWAYS_ACCESSIBLE.has(to.path) && !ENTRY_PATHS.has(to.path)) {
-      return navigateTo('/')
+  const name = baseName(to.name)
+  const localePath = useLocalePath()
+
+  // Ruta desconocida (404): dejar pasar para no provocar redirecciones en bucle.
+  if (!name) return
+
+  if (PUBLIC_ROUTES.has(name)) {
+    if (state.value && !ALWAYS_ACCESSIBLE.has(name) && !ENTRY_ROUTES.has(name)) {
+      const target = localePath('/')
+      if (target === to.fullPath) return
+      return navigateTo(target)
     }
     return
   }
 
   if (!state.value) {
-    return navigateTo('/signin')
+    const target = localePath('/signin')
+    // Salvaguarda: nunca redirigir a la misma ruta.
+    if (target === to.fullPath) return
+    return navigateTo(target)
   }
 })

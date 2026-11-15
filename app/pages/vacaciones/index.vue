@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useI18n()
+const localePath = useLocalePath()
 import { addDays, format, startOfWeek } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { BalanceResponse, LeaveRequestRow, LeaveType } from '~/types/api'
@@ -258,16 +260,16 @@ async function cancelRequest(id: string) {
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Vacaciones y ausencias"
-      subtitle="Consulta tu saldo, solicita días y sigue el estado de tus peticiones."
+      :title="t('page.vacaciones.title')"
+      :subtitle="t('page.vacaciones.subtitle')"
     >
       <AiActionButton module="vacaciones" label="Con IA" prompt="Crea una solicitud de vacaciones. Pregúntame el empleado y las fechas si te faltan." />
-      <UButton to="/vacaciones/calendario" color="neutral" variant="soft" icon="i-lucide-calendar-days">
+      <UButton :to="localePath('/vacaciones/calendario')" color="neutral" variant="soft" icon="i-lucide-calendar-days">
         Calendario
       </UButton>
       <UButton
         v-if="isManager"
-        to="/vacaciones/aprobaciones"
+        :to="localePath('/vacaciones/aprobaciones')"
         color="neutral"
         variant="soft"
         icon="i-lucide-check-check"

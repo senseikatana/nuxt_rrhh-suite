@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 import { addDays, format, parseISO, startOfWeek } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -186,7 +187,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-6">
-    <PageHeader title="Turnos" subtitle="Cuadrante semanal por empleado con patrones de turno.">
+    <PageHeader :title="t('page.turnos.title')" :subtitle="t('page.turnos.subtitle')">
       <AiActionButton module="turnos" label="Con IA" prompt="Asigna turnos al equipo de esta semana. Pregúntame empleado, día y turno si te faltan." />
       <div class="flex items-center gap-2">
         <UButton variant="soft" color="neutral" icon="i-lucide-chevron-left" @click="changeWeek(-1)" />

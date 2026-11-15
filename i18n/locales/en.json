@@ -1,0 +1,102 @@
+{
+  "nav": {
+    "secPrincipal": "Main",
+    "secPersonal": "People",
+    "secGestion": "Management",
+    "secErp": "ERP",
+    "secAdmin": "Administration",
+    "dashboard": "Dashboard",
+    "herramientas": "Tools",
+    "vacaciones": "Time off",
+    "calendario": "Calendar",
+    "aprobaciones": "Approvals",
+    "empleados": "People",
+    "fichaje": "Clock in",
+    "turnos": "Shifts",
+    "gastos": "Expenses",
+    "nominas": "Payroll",
+    "reclutamiento": "Recruitment",
+    "denuncias": "Complaints",
+    "asistente": "AI assistant",
+    "erpPanel": "ERP panel",
+    "sales": "Sales",
+    "purchases": "Purchases",
+    "warehouse": "Warehouse",
+    "demand": "Demand",
+    "routes": "Routes",
+    "activity": "Activity",
+    "settings": "Settings",
+    "account": "My account",
+    "menu": "Menu",
+    "openMenu": "Open menu"
+  },
+  "user": {
+    "theme": "Theme",
+    "language": "Language",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "logout": "Sign out",
+    "roleAdmin": "Administration",
+    "roleManager": "Manager",
+    "roleEmployee": "Employee",
+    "requestTimeOff": "Request time off",
+    "signedInAs": "You are signed in as"
+  },
+  "common": {
+    "new": "New",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading…",
+    "actions": "Actions",
+    "empty": "No data",
+    "all": "All",
+    "back": "Back"
+  },
+  "page": {
+    "dashboard": {
+      "greeting": "Hi, {name}",
+      "teamSummary": "This is today's team overview. Your pending requests are at hand.",
+      "ownSummary": "Check your balance, request time off and review the team calendar."
+    },
+    "empleados": {
+      "title": "People",
+      "subtitle": "Headcount, departments and access. Import from Excel or export the current state."
+    },
+    "fichaje": {
+      "title": "Time clock",
+      "subtitle": "Record your clock-in and clock-out and review worked hours, balance and incidents."
+    },
+    "vacaciones": {
+      "title": "Time off and absences",
+      "subtitle": "Check your balance, request days and follow the status of your requests."
+    },
+    "turnos": {
+      "title": "Shifts",
+      "subtitle": "Weekly roster per employee with shift patterns."
+    },
+    "gastos": {
+      "title": "Expenses",
+      "subtitle": "Expense claims with their lines, approval and reimbursement."
+    },
+    "nominas": {
+      "title": "Payroll",
+      "subtitle": "Payroll distribution and staff cost per period."
+    },
+    "reclutamiento": {
+      "title": "Recruitment",
+      "subtitle": "Published jobs, applications and the selection process by stage."
+    },
+    "denuncias": {
+      "title": "Whistleblowing channel",
+      "subtitle": "Traceable and confidential channel. No reporter data is stored."
+    },
+    "asistente": {
+      "title": "Content assistant",
+      "subtitle": "Create, update and modify site content by talking to the AI. Every change is recorded in the audit log."
+    }
+  }
+}

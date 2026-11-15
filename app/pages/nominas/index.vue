@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 interface PayrollPeriod {
   id: string
   year: number
@@ -183,8 +184,8 @@ onMounted(async () => {
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Nóminas"
-      subtitle="Distribución de nóminas y coste de personal por periodo."
+      :title="t('page.nominas.title')"
+      :subtitle="t('page.nominas.subtitle')"
     >
       <AiActionButton module="nominas" label="Preparar con IA" prompt="Prepara el periodo de nómina del mes actual y pregúntame lo que necesites." />
       <UButton v-if="isManager" icon="i-lucide-calendar-plus" @click="formOpen = !formOpen">

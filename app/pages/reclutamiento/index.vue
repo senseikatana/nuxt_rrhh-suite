@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 interface Job {
   id: string
   title: string
@@ -218,8 +219,8 @@ onMounted(async () => {
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Reclutamiento"
-      subtitle="Ofertas publicadas, candidaturas y proceso de selección por etapas."
+      :title="t('page.reclutamiento.title')"
+      :subtitle="t('page.reclutamiento.subtitle')"
     >
       <AiActionButton module="reclutamiento" label="Crear con IA" prompt="Publica una oferta de empleo. Pregúntame el puesto, el departamento y las condiciones si te faltan." />
       <UButton icon="i-lucide-plus" @click="jobFormOpen = !jobFormOpen">Nueva oferta</UButton>

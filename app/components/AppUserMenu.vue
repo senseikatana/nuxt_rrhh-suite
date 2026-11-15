@@ -1,37 +1,42 @@
 <script setup lang="ts">
-import { APP_LOCALES, type AppLocale } from '~/composables/usePreferences'
-
 withDefaults(defineProps<{ collapsed?: boolean }>(), { collapsed: false })
 const emit = defineEmits<{ navigate: [] }>()
 
 const { state, displayName, isAdmin, logout } = useSession()
-const { t } = useI18nLite()
-const { locale, setLocale } = usePreferences()
+const { t, locale, locales, setLocale } = useI18n()
+const localePath = useLocalePath()
 const colorMode = useColorMode()
 
 const open = ref(false)
 
 const roleLabel = computed(() => {
   const role = state.value?.user.role
-  if (role === 'admin') return t('roleAdmin')
-  if (role === 'manager') return t('roleManager')
-  return t('roleEmployee')
+  if (role === 'admin') return t('user.roleAdmin')
+  if (role === 'manager') return t('user.roleManager')
+  return t('user.roleEmployee')
 })
 
 const themeOptions = computed(() => [
-  { value: 'light' as const, label: t('light'), icon: 'i-lucide-sun' },
-  { value: 'dark' as const, label: t('dark'), icon: 'i-lucide-moon' },
-  { value: 'system' as const, label: t('system'), icon: 'i-lucide-monitor' },
+  { value: 'light' as const, label: t('user.light'), icon: 'i-lucide-sun' },
+  { value: 'dark' as const, label: t('user.dark'), icon: 'i-lucide-moon' },
+  { value: 'system' as const, label: t('user.system'), icon: 'i-lucide-monitor' },
 ])
 
-const localeOptions = computed(() => APP_LOCALES)
+const localeOptions = computed(() =>
+  locales.value.map((item) =>
+    typeof item === 'string'
+      ? { value: item, label: item.toUpperCase() }
+      : { value: item.code, label: item.name ?? item.code.toUpperCase() },
+  ),
+)
 
 function setTheme(value: 'light' | 'dark' | 'system') {
   colorMode.preference = value
 }
 
-function pickLocale(value: AppLocale) {
-  setLocale(value)
+function pickLocale(value: string) {
+  // setLocale de @nuxtjs/i18n navega además a la ruta traducida equivalente.
+  void setLocale(value as 'es' | 'en' | 'ca')
 }
 
 function close() {
@@ -83,28 +88,28 @@ async function signOut() {
         <!-- Cuenta y ajustes -->
         <div class="p-1.5">
           <NuxtLink
-            to="/cuenta"
+            :to="localePath('/cuenta')"
             class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             @click="close"
           >
             <UIcon name="i-lucide-user" class="size-4 text-slate-400" />
-            {{ t('account') }}
+            {{ t('user.account') }}
           </NuxtLink>
           <NuxtLink
             v-if="isAdmin"
-            to="/ajustes"
+            :to="localePath('/ajustes')"
             class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             @click="close"
           >
             <UIcon name="i-lucide-settings" class="size-4 text-slate-400" />
-            {{ t('settings') }}
+            {{ t('user.settings') }}
           </NuxtLink>
         </div>
 
         <!-- Tema -->
         <div class="border-t border-slate-100 p-2">
           <p class="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('theme') }}
+            {{ t('user.theme') }}
           </p>
           <div class="grid grid-cols-3 gap-1">
             <button
@@ -128,7 +133,7 @@ async function signOut() {
         <!-- Idioma -->
         <div class="border-t border-slate-100 p-2">
           <p class="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            {{ t('language') }}
+            {{ t('user.language') }}
           </p>
           <div class="grid grid-cols-3 gap-1">
             <button
@@ -156,7 +161,7 @@ async function signOut() {
             @click="signOut"
           >
             <UIcon name="i-lucide-log-out" class="size-4" />
-            {{ t('logout') }}
+            {{ t('user.logout') }}
           </button>
         </div>
       </div>

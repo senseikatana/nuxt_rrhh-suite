@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 interface WhistleReport {
   id: string
   trackingCode: string
@@ -184,8 +185,8 @@ onMounted(loadReports)
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Canal de denuncias"
-      subtitle="Canal trazable y confidencial. No se guarda ningún dato del denunciante."
+      :title="t('page.denuncias.title')"
+      :subtitle="t('page.denuncias.subtitle')"
     >
       <AiActionButton module="denuncias" label="Revisar con IA" prompt="Revisa las denuncias abiertas y propón los siguientes pasos para cada una." />
     </PageHeader>

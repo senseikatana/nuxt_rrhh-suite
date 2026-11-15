@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 interface ContentBlock {
   id: string
   key: string
@@ -36,8 +37,8 @@ onMounted(loadContent)
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Asistente de contenido"
-      subtitle="Crea, actualiza y modifica el contenido del sitio hablando con la IA. Cada cambio queda registrado en la auditoría."
+      :title="t('page.asistente.title')"
+      :subtitle="t('page.asistente.subtitle')"
     >
       <UBadge v-if="status" :color="status.configured ? 'success' : 'error'" variant="subtle" size="sm">
         {{ status.configured ? `IA lista · ${status.model}` : 'IA sin configurar' }}

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 interface ExpenseLine {
   id: string
   date: string
@@ -154,8 +155,8 @@ onMounted(load)
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Gastos"
-      subtitle="Notas de gasto con sus líneas, validación y reembolso."
+      :title="t('page.gastos.title')"
+      :subtitle="t('page.gastos.subtitle')"
     >
       <AiActionButton module="gastos" label="Crear con IA" prompt="Crea una nota de gasto. Pregúntame el empleado, la fecha, la categoría, el importe y una descripción si te faltan." />
       <UButton icon="i-lucide-plus" @click="formOpen = !formOpen">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 import type { BalanceResponse, LeaveRequestRow } from '~/types/api'
 import type { DashboardSummary } from '~/types/erp'
 
@@ -179,7 +180,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
         :value="vacation?.availableDays ?? 0"
         :hint="`de ${vacation?.totalDays ?? 0} días en ${year}`"
         icon="i-lucide-palmtree"
-        to="/vacaciones"
+        :to="localePath('/vacaciones')"
       />
 
       <!-- Fichaje rápido -->
@@ -189,7 +190,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
         description="Registra tu entrada o salida del turno de hoy"
         icon="i-lucide-clock"
         tone="violet"
-        to="/fichaje"
+        :to="localePath('/fichaje')"
       />
 
       <!-- Pendientes -->
@@ -210,7 +211,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
           hint="abiertos"
           icon="i-lucide-shopping-cart"
           tone="sky"
-          to="/erp/sales"
+          :to="localePath('/erp/sales')"
         />
         <BentoTile
           title="En calidad"
@@ -218,7 +219,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
           hint="compras por revisar"
           icon="i-lucide-shopping-bag"
           tone="rose"
-          to="/erp/purchases"
+          :to="localePath('/erp/purchases')"
         />
         <BentoTile
           title="Inventario"
@@ -226,7 +227,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
           hint="artículos bajo mínimo"
           icon="i-lucide-warehouse"
           tone="emerald"
-          to="/erp/warehouse"
+          :to="localePath('/erp/warehouse')"
         />
       </template>
     </div>
@@ -272,7 +273,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
         description="Indicadores, alertas y estado operativo del negocio"
         icon="i-lucide-layout-grid"
         tone="sky"
-        to="/erp"
+        :to="localePath('/erp')"
       />
       <BentoTile
         size="wide"
@@ -280,7 +281,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
         description="Perfil, preferencias y configuración personal"
         icon="i-lucide-settings"
         tone="slate"
-        to="/cuenta"
+        :to="localePath('/cuenta')"
       />
     </div>
   </div>

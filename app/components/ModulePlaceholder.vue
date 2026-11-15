@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 defineProps<{
   title: string
   phase: string
@@ -11,7 +12,7 @@ defineProps<{
   <div class="space-y-6">
     <PageHeader :title="title" :subtitle="description">
       <UBadge color="neutral" variant="subtle">{{ phase }}</UBadge>
-      <UButton to="/" color="neutral" variant="ghost" icon="i-lucide-arrow-left">Volver al inicio</UButton>
+      <UButton :to="localePath('/')" color="neutral" variant="ghost" icon="i-lucide-arrow-left">Volver al inicio</UButton>
     </PageHeader>
 
     <div class="grid gap-4 md:grid-cols-2">

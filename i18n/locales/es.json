@@ -1,0 +1,102 @@
+{
+  "nav": {
+    "secPrincipal": "Principal",
+    "secPersonal": "Personal",
+    "secGestion": "Gestión",
+    "secErp": "ERP",
+    "secAdmin": "Administración",
+    "dashboard": "Dashboard",
+    "herramientas": "Herramientas",
+    "vacaciones": "Vacaciones",
+    "calendario": "Calendario",
+    "aprobaciones": "Aprobaciones",
+    "empleados": "Empleados",
+    "fichaje": "Fichaje",
+    "turnos": "Turnos",
+    "gastos": "Gastos",
+    "nominas": "Nóminas",
+    "reclutamiento": "Reclutamiento",
+    "denuncias": "Denuncias",
+    "asistente": "Asistente IA",
+    "erpPanel": "Panel ERP",
+    "sales": "Ventas",
+    "purchases": "Compras",
+    "warehouse": "Almacén",
+    "demand": "Demanda",
+    "routes": "Rutas",
+    "activity": "Actividad",
+    "settings": "Ajustes",
+    "account": "Mi cuenta",
+    "menu": "Menú",
+    "openMenu": "Abrir menú"
+  },
+  "user": {
+    "theme": "Tema",
+    "language": "Idioma",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema",
+    "logout": "Cerrar sesión",
+    "roleAdmin": "Administración",
+    "roleManager": "Mando",
+    "roleEmployee": "Empleado",
+    "requestTimeOff": "Solicitar vacaciones",
+    "signedInAs": "Has entrado como"
+  },
+  "common": {
+    "new": "Nuevo",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Cargando…",
+    "actions": "Acciones",
+    "empty": "Sin datos",
+    "all": "Todos",
+    "back": "Volver"
+  },
+  "page": {
+    "dashboard": {
+      "greeting": "Hola, {name}",
+      "teamSummary": "Este es el resumen del equipo para hoy. Tienes las solicitudes pendientes a mano.",
+      "ownSummary": "Consulta tu saldo, pide vacaciones y revisa el calendario del equipo."
+    },
+    "empleados": {
+      "title": "Empleados",
+      "subtitle": "Plantilla, departamentos y accesos. Importa desde Excel o exporta el estado actual."
+    },
+    "fichaje": {
+      "title": "Fichaje y jornada",
+      "subtitle": "Registra tu entrada y salida y consulta las horas trabajadas, el balance y las incidencias."
+    },
+    "vacaciones": {
+      "title": "Vacaciones y ausencias",
+      "subtitle": "Consulta tu saldo, solicita días y sigue el estado de tus peticiones."
+    },
+    "turnos": {
+      "title": "Turnos",
+      "subtitle": "Cuadrante semanal por empleado con patrones de turno."
+    },
+    "gastos": {
+      "title": "Gastos",
+      "subtitle": "Notas de gasto con sus líneas, validación y reembolso."
+    },
+    "nominas": {
+      "title": "Nóminas",
+      "subtitle": "Distribución de nóminas y coste de personal por periodo."
+    },
+    "reclutamiento": {
+      "title": "Reclutamiento",
+      "subtitle": "Ofertas publicadas, candidaturas y proceso de selección por etapas."
+    },
+    "denuncias": {
+      "title": "Canal de denuncias",
+      "subtitle": "Canal trazable y confidencial. No se guarda ningún dato del denunciante."
+    },
+    "asistente": {
+      "title": "Asistente de contenido",
+      "subtitle": "Crea, actualiza y modifica el contenido del sitio hablando con la IA. Cada cambio queda registrado en la auditoría."
+    }
+  }
+}

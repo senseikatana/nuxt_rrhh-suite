@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useI18n()
+const localePath = useLocalePath()
 import type { BalanceResponse, CalendarResponse, LeaveRequestRow } from '~/types/api'
 
 const { state, isManager, displayName } = useSession()
@@ -254,20 +256,20 @@ async function approveRequest(id: string) {
     <div class="flex flex-col gap-4 rounded-3xl bg-slate-900 p-6 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between sm:p-8">
       <div>
         <p class="text-sm text-slate-400">{{ formatDate(new Date()) }} · {{ state?.organization.name }}</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Hola, {{ displayName }}</h1>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{{ t('page.dashboard.greeting', { name: displayName }) }}</h1>
         <p class="mt-2 max-w-xl text-sm text-slate-400">
           {{
             isManager
-              ? 'Este es el resumen del equipo para hoy. Tienes las solicitudes pendientes a mano.'
-              : 'Consulta tu saldo, pide vacaciones y revisa el calendario del equipo.'
+              ? t('page.dashboard.teamSummary')
+              : t('page.dashboard.ownSummary')
           }}
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <UButton to="/vacaciones" icon="i-lucide-plus" size="lg">Solicitar vacaciones</UButton>
+        <UButton :to="localePath('/vacaciones')" icon="i-lucide-plus" size="lg">Solicitar vacaciones</UButton>
         <UButton
           v-if="isManager"
-          to="/vacaciones/aprobaciones"
+          :to="localePath('/vacaciones/aprobaciones')"
           color="neutral"
           variant="soft"
           icon="i-lucide-check-check"
@@ -329,7 +331,7 @@ async function approveRequest(id: string) {
       </div>
 
       <div class="flex items-center gap-2">
-        <UButton to="/fichaje" color="neutral" variant="ghost" size="sm">Ver detalle</UButton>
+        <UButton :to="localePath('/fichaje')" color="neutral" variant="ghost" size="sm">Ver detalle</UButton>
         <UButton
           :color="attendanceNext === 'in' ? 'success' : 'error'"
           :icon="attendanceNext === 'in' ? 'i-lucide-log-in' : 'i-lucide-log-out'"
@@ -384,7 +386,7 @@ async function approveRequest(id: string) {
           description="Cuando pidas vacaciones aparecerán aquí."
           class="mt-5 border-0 bg-transparent py-8"
         >
-          <UButton to="/vacaciones" size="sm" variant="soft">Pedir vacaciones</UButton>
+          <UButton :to="localePath('/vacaciones')" size="sm" variant="soft">Pedir vacaciones</UButton>
         </EmptyState>
       </div>
 
@@ -392,7 +394,7 @@ async function approveRequest(id: string) {
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-slate-900">Pendientes de aprobar</h2>
           <NuxtLink
-            to="/vacaciones/aprobaciones"
+            :to="localePath('/vacaciones/aprobaciones')"
             class="tap-target text-xs font-medium text-sky-600 hover:text-sky-700"
           >
             Ver todas
@@ -492,7 +494,7 @@ async function approveRequest(id: string) {
           <p class="text-xs text-slate-500">Ausencias aprobadas que cubren la fecha de hoy.</p>
         </div>
         <NuxtLink
-          to="/vacaciones/calendario"
+          :to="localePath('/vacaciones/calendario')"
           class="tap-target text-xs font-medium text-sky-600 hover:text-sky-700"
         >
           Abrir calendario anual

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 const { state, displayName, logout, isManager } = useSession()
 const requestFetch = useRequestFetch()
 const toast = useToast()
@@ -215,7 +216,7 @@ function describeAgent(userAgent: string | null | undefined) {
 
         <UButton
           v-if="isManager"
-          to="/empleados"
+          :to="localePath('/empleados')"
           class="mt-4"
           variant="soft"
           icon="i-lucide-users"

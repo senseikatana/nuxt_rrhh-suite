@@ -3,7 +3,8 @@ import type { NavSection } from '~/types/nav'
 
 const { state, isAdmin, isManager, displayName } = useSession()
 const erpSession = useErpSession()
-const { t } = useI18nLite()
+const { t } = useI18n()
+const localePath = useLocalePath()
 const { sidebarCollapsed, toggleSidebar } = usePreferences()
 const { refresh: refreshAiStatus } = useAiStatus()
 const route = useRoute()
@@ -23,17 +24,17 @@ const pendingCount = ref(0)
 
 const sections = computed<NavSection[]>(() => [
   {
-    title: t('secPrincipal'),
+    title: t('nav.secPrincipal'),
     items: [
-      { label: t('dashboard'), to: '/', icon: 'i-lucide-layout-dashboard' },
-      { label: t('herramientas'), to: '/herramientas', icon: 'i-lucide-layout-grid' },
-      { label: t('vacaciones'), to: '/vacaciones', icon: 'i-lucide-palmtree' },
-      { label: t('calendario'), to: '/vacaciones/calendario', icon: 'i-lucide-calendar-days' },
+      { label: t('nav.dashboard'), to: localePath('/'), icon: 'i-lucide-layout-dashboard' },
+      { label: t('nav.herramientas'), to: localePath('/herramientas'), icon: 'i-lucide-layout-grid' },
+      { label: t('nav.vacaciones'), to: localePath('/vacaciones'), icon: 'i-lucide-palmtree' },
+      { label: t('nav.calendario'), to: localePath('/vacaciones/calendario'), icon: 'i-lucide-calendar-days' },
       ...(isManager.value
         ? [
             {
-              label: t('aprobaciones'),
-              to: '/vacaciones/aprobaciones',
+              label: t('nav.aprobaciones'),
+              to: localePath('/vacaciones/aprobaciones'),
               icon: 'i-lucide-check-check',
               badge: pendingCount.value,
             },
@@ -42,23 +43,23 @@ const sections = computed<NavSection[]>(() => [
     ],
   },
   {
-    title: t('secPersonal'),
+    title: t('nav.secPersonal'),
     items: [
       ...(isManager.value
-        ? [{ label: t('empleados'), to: '/empleados', icon: 'i-lucide-users' }]
+        ? [{ label: t('nav.empleados'), to: localePath('/empleados'), icon: 'i-lucide-users' }]
         : []),
-      { label: t('fichaje'), to: '/fichaje', icon: 'i-lucide-clock' },
-      { label: t('turnos'), to: '/turnos', icon: 'i-lucide-calendar-range' },
+      { label: t('nav.fichaje'), to: localePath('/fichaje'), icon: 'i-lucide-clock' },
+      { label: t('nav.turnos'), to: localePath('/turnos'), icon: 'i-lucide-calendar-range' },
     ],
   },
   {
-    title: t('secGestion'),
+    title: t('nav.secGestion'),
     items: [
-      { label: t('gastos'), to: '/gastos', icon: 'i-lucide-receipt' },
-      { label: t('nominas'), to: '/nominas', icon: 'i-lucide-banknote' },
-      { label: t('reclutamiento'), to: '/reclutamiento', icon: 'i-lucide-user-plus' },
-      { label: t('denuncias'), to: '/denuncias', icon: 'i-lucide-shield-check' },
-      { label: t('asistente'), to: '/asistente', icon: 'i-lucide-sparkles' },
+      { label: t('nav.gastos'), to: localePath('/gastos'), icon: 'i-lucide-receipt' },
+      { label: t('nav.nominas'), to: localePath('/nominas'), icon: 'i-lucide-banknote' },
+      { label: t('nav.reclutamiento'), to: localePath('/reclutamiento'), icon: 'i-lucide-user-plus' },
+      { label: t('nav.denuncias'), to: localePath('/denuncias'), icon: 'i-lucide-shield-check' },
+      { label: t('nav.asistente'), to: localePath('/asistente'), icon: 'i-lucide-sparkles' },
     ],
   },
   // Sección ERP: visible solo para quien tiene un rol ERP (grant en
@@ -66,18 +67,18 @@ const sections = computed<NavSection[]>(() => [
   ...(erpSession.navigation.value.length
     ? [
         {
-          title: t('secErp'),
+          title: t('nav.secErp'),
           items: [
             {
-              label: t('erpPanel'),
-              to: '/erp',
+              label: t('nav.erpPanel'),
+              to: localePath('/erp'),
               icon: 'i-lucide-layout-grid',
             },
             ...erpSession.navigation.value
               .filter((entry) => entry.key !== 'dashboard')
               .map((entry) => ({
-                label: t(entry.key),
-                to: entry.to,
+                label: t(`nav.${entry.key}`),
+                to: localePath(entry.to),
                 icon: ERP_NAV_ICONS[entry.key] ?? 'i-lucide-box',
               })),
           ],
@@ -87,8 +88,8 @@ const sections = computed<NavSection[]>(() => [
   ...(isAdmin.value
     ? [
         {
-          title: t('secAdmin'),
-          items: [{ label: t('settings'), to: '/ajustes', icon: 'i-lucide-settings' }],
+          title: t('nav.secAdmin'),
+          items: [{ label: t('nav.settings'), to: localePath('/ajustes'), icon: 'i-lucide-settings' }],
         },
       ]
     : []),
@@ -164,7 +165,7 @@ watch(
           <p class="truncate text-xs text-slate-500">{{ displayName }}</p>
         </div>
         <NuxtLink
-          to="/vacaciones"
+          :to="localePath('/vacaciones')"
           class="tap-target rounded-xl bg-slate-900 text-white"
           title="Solicitar vacaciones"
         >
@@ -215,29 +216,29 @@ watch(
     >
       <div class="flex items-stretch justify-around">
         <NuxtLink
-          to="/"
+          :to="localePath('/')"
           class="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium"
           :class="route.path === '/' ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-layout-dashboard" class="size-5" />
-          {{ t('dashboard') }}
+          {{ t('nav.dashboard') }}
         </NuxtLink>
         <NuxtLink
-          to="/vacaciones"
+          :to="localePath('/vacaciones')"
           class="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium"
           :class="route.path.startsWith('/vacaciones') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-palmtree" class="size-5" />
-          {{ t('vacaciones') }}
+          {{ t('nav.vacaciones') }}
         </NuxtLink>
         <NuxtLink
           v-if="isManager"
-          to="/vacaciones/aprobaciones"
+          :to="localePath('/vacaciones/aprobaciones')"
           class="relative flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium"
           :class="route.path.includes('aprobaciones') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-check-check" class="size-5" />
-          {{ t('aprobaciones') }}
+          {{ t('nav.aprobaciones') }}
           <span
             v-if="pendingCount"
             class="absolute right-4 top-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white"
@@ -247,21 +248,21 @@ watch(
         </NuxtLink>
         <NuxtLink
           v-else
-          to="/vacaciones/calendario"
+          :to="localePath('/vacaciones/calendario')"
           class="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium"
           :class="route.path.includes('calendario') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-calendar-days" class="size-5" />
-          {{ t('calendario') }}
+          {{ t('nav.calendario') }}
         </NuxtLink>
         <NuxtLink
           v-if="isManager"
-          to="/empleados"
+          :to="localePath('/empleados')"
           class="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium"
           :class="route.path.startsWith('/empleados') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-users" class="size-5" />
-          {{ t('empleados') }}
+          {{ t('nav.empleados') }}
         </NuxtLink>
         <button
           v-else
@@ -270,7 +271,7 @@ watch(
           @click="mobileOpen = true"
         >
           <UIcon name="i-lucide-menu" class="size-5" />
-          {{ t('menu') }}
+          {{ t('nav.menu') }}
         </button>
       </div>
     </nav>

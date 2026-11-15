@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 definePageMeta({ layout: false })
 
 const route = useRoute()
@@ -56,8 +57,8 @@ onMounted(async () => {
       <h3 class="mt-4 text-base font-semibold text-rose-900">No se pudo verificar</h3>
       <p class="mt-2 text-sm text-rose-800">{{ message }}</p>
       <div class="mt-5 flex justify-center gap-2">
-        <UButton to="/signin" variant="soft">Iniciar sesión</UButton>
-        <UButton to="/cuenta" variant="ghost">Mi cuenta</UButton>
+        <UButton :to="localePath('/signin')" variant="soft">Iniciar sesión</UButton>
+        <UButton :to="localePath('/cuenta')" variant="ghost">Mi cuenta</UButton>
       </div>
     </div>
   </AuthShell>

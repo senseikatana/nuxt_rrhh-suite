@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 definePageMeta({ layout: false })
 
 const route = useRoute()
@@ -61,7 +62,7 @@ async function submit() {
       <p class="mt-2 text-sm text-rose-800">
         Falta el token de recuperación. Solicita un enlace nuevo.
       </p>
-      <UButton to="/forgot-password" class="mt-5" variant="soft">Solicitar enlace</UButton>
+      <UButton :to="localePath('/forgot-password')" class="mt-5" variant="soft">Solicitar enlace</UButton>
     </div>
 
     <div v-else-if="done" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
@@ -70,7 +71,7 @@ async function submit() {
       </span>
       <h3 class="mt-4 text-base font-semibold text-emerald-900">Contraseña actualizada</h3>
       <p class="mt-2 text-sm text-emerald-800">Ya puedes iniciar sesión con la nueva contraseña.</p>
-      <UButton to="/signin" class="mt-5" variant="soft">Iniciar sesión</UButton>
+      <UButton :to="localePath('/signin')" class="mt-5" variant="soft">Iniciar sesión</UButton>
     </div>
 
     <form v-else class="space-y-4" :data-ready="mounted ? 'true' : 'false'" @submit.prevent="submit">

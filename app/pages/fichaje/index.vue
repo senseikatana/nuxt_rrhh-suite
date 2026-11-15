@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useI18n()
 import type {
   AttendanceDay,
   AttendanceSummary,
@@ -210,8 +211,8 @@ function exportRegister() {
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Fichaje y jornada"
-      subtitle="Registra tu entrada y salida y consulta las horas trabajadas, el balance y las incidencias."
+      :title="t('page.fichaje.title')"
+      :subtitle="t('page.fichaje.subtitle')"
     >
       <AiActionButton module="fichaje" label="Corregir con IA" prompt="Necesito corregir un fichaje. Pregúntame el empleado, la fecha, la hora y si es entrada o salida." />
       <UButton

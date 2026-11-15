@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 definePageMeta({ layout: false })
 
 const email = ref('')
@@ -45,7 +46,7 @@ async function submit() {
         Si <strong>{{ email }}</strong> existe en el sistema, recibirás un enlace para
         restablecer la contraseña. Caduca en 1 hora.
       </p>
-      <UButton to="/signin" class="mt-5" variant="soft">Volver a iniciar sesión</UButton>
+      <UButton :to="localePath('/signin')" class="mt-5" variant="soft">Volver a iniciar sesión</UButton>
     </div>
 
     <form v-else class="space-y-4" :data-ready="mounted ? 'true' : 'false'" @submit.prevent="submit">
@@ -79,7 +80,7 @@ async function submit() {
     </form>
 
     <p class="mt-4 text-center text-sm text-slate-500">
-      <NuxtLink to="/signin" class="font-medium text-sky-600 hover:text-sky-700">
+      <NuxtLink :to="localePath('/signin')" class="font-medium text-sky-600 hover:text-sky-700">
         Volver a iniciar sesión
       </NuxtLink>
     </p>

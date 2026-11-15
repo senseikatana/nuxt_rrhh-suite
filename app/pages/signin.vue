@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 definePageMeta({ layout: false })
 
 const { login, state: session, logout } = useSession()
@@ -54,7 +55,7 @@ async function submit() {
       <p class="font-semibold">Ya tienes la sesión iniciada</p>
       <p class="mt-0.5 text-emerald-700">Has entrado como {{ session.user.email }}.</p>
       <div class="mt-3 flex flex-wrap gap-2">
-        <UButton size="xs" color="success" icon="i-lucide-layout-dashboard" to="/">
+        <UButton size="xs" color="success" icon="i-lucide-layout-dashboard" :to="localePath('/')">
           Ir al panel
         </UButton>
         <UButton size="xs" color="neutral" variant="soft" icon="i-lucide-log-out" @click="logout">
@@ -82,7 +83,7 @@ async function submit() {
         <div class="mb-1.5 flex items-center justify-between">
           <label class="block text-sm font-medium text-slate-700" for="password">Contraseña</label>
           <NuxtLink
-            to="/forgot-password"
+            :to="localePath('/forgot-password')"
             class="text-xs font-medium text-sky-600 hover:text-sky-700"
           >
             ¿La has olvidado?
@@ -115,7 +116,7 @@ async function submit() {
 
     <p class="mt-4 text-center text-sm text-slate-500">
       ¿No tienes cuenta?
-      <NuxtLink to="/signup" class="font-medium text-sky-600 hover:text-sky-700">
+      <NuxtLink :to="localePath('/signup')" class="font-medium text-sky-600 hover:text-sky-700">
         Crear una cuenta
       </NuxtLink>
     </p>

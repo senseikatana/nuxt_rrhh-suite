@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useI18n()
+const localePath = useLocalePath()
 import type { DepartmentRow, EmployeeRow, ImportResult } from '~/types/api'
 
 const { isAdmin } = useSession()
@@ -106,8 +108,8 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="Empleados"
-      subtitle="Plantilla, departamentos y accesos. Importa desde Excel o exporta el estado actual."
+      :title="t('page.empleados.title')"
+      :subtitle="t('page.empleados.subtitle')"
     >
       <AiActionButton module="empleados" label="Crear con IA" prompt="Da de alta un empleado nuevo. Pregúntame nombre, apellidos, email, puesto, departamento y fecha de alta si te faltan." />
       <UButton
@@ -241,7 +243,7 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
           Solo las cuentas con rol <strong>Administración</strong> pueden cambiar la configuración de
           vacaciones, ver la auditoría e importar plantilla.
         </p>
-        <UButton to="/ajustes" class="mt-4" variant="soft" icon="i-lucide-settings">
+        <UButton :to="localePath('/ajustes')" class="mt-4" variant="soft" icon="i-lucide-settings">
           Ir a ajustes
         </UButton>
       </div>

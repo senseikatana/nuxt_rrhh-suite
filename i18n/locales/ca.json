@@ -1,0 +1,102 @@
+{
+  "nav": {
+    "secPrincipal": "Principal",
+    "secPersonal": "Personal",
+    "secGestion": "Gestió",
+    "secErp": "ERP",
+    "secAdmin": "Administració",
+    "dashboard": "Tauler",
+    "herramientas": "Eines",
+    "vacaciones": "Vacances",
+    "calendario": "Calendari",
+    "aprobaciones": "Aprovacions",
+    "empleados": "Empleats",
+    "fichaje": "Fitxatge",
+    "turnos": "Torns",
+    "gastos": "Despeses",
+    "nominas": "Nòmines",
+    "reclutamiento": "Reclutament",
+    "denuncias": "Denúncies",
+    "asistente": "Assistent IA",
+    "erpPanel": "Panell ERP",
+    "sales": "Vendes",
+    "purchases": "Compres",
+    "warehouse": "Magatzem",
+    "demand": "Demanda",
+    "routes": "Rutes",
+    "activity": "Activitat",
+    "settings": "Ajustos",
+    "account": "El meu compte",
+    "menu": "Menú",
+    "openMenu": "Obrir menú"
+  },
+  "user": {
+    "theme": "Tema",
+    "language": "Idioma",
+    "light": "Clar",
+    "dark": "Fosc",
+    "system": "Sistema",
+    "logout": "Tancar sessió",
+    "roleAdmin": "Administració",
+    "roleManager": "Cap",
+    "roleEmployee": "Empleat",
+    "requestTimeOff": "Demanar vacances",
+    "signedInAs": "Has entrat com"
+  },
+  "common": {
+    "new": "Nou",
+    "save": "Desar",
+    "cancel": "Cancel·lar",
+    "close": "Tancar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Carregant…",
+    "actions": "Accions",
+    "empty": "Sense dades",
+    "all": "Tots",
+    "back": "Tornar"
+  },
+  "page": {
+    "dashboard": {
+      "greeting": "Hola, {name}",
+      "teamSummary": "Aquest és el resum de l'equip per a avui. Tens les sol·licituds pendents a mà.",
+      "ownSummary": "Consulta el teu saldo, demana vacances i revisa el calendari de l'equip."
+    },
+    "empleados": {
+      "title": "Empleats",
+      "subtitle": "Plantilla, departaments i accessos. Importa des d'Excel o exporta l'estat actual."
+    },
+    "fichaje": {
+      "title": "Fitxatge i jornada",
+      "subtitle": "Registra l'entrada i la sortida i consulta les hores treballades, el balanç i les incidències."
+    },
+    "vacaciones": {
+      "title": "Vacances i absències",
+      "subtitle": "Consulta el teu saldo, demana dies i segueix l'estat de les teves sol·licituds."
+    },
+    "turnos": {
+      "title": "Torns",
+      "subtitle": "Quadrant setmanal per empleat amb patrons de torn."
+    },
+    "gastos": {
+      "title": "Despeses",
+      "subtitle": "Notes de despesa amb les seves línies, validació i reemborsament."
+    },
+    "nominas": {
+      "title": "Nòmines",
+      "subtitle": "Distribució de nòmines i cost de personal per període."
+    },
+    "reclutamiento": {
+      "title": "Reclutament",
+      "subtitle": "Ofertes publicades, candidatures i procés de selecció per etapes."
+    },
+    "denuncias": {
+      "title": "Canal de denúncies",
+      "subtitle": "Canal traçable i confidencial. No es guarda cap dada del denunciant."
+    },
+    "asistente": {
+      "title": "Assistent de contingut",
+      "subtitle": "Crea, actualitza i modifica el contingut del lloc parlant amb la IA. Cada canvi queda registrat a l'auditoria."
+    }
+  }
+}

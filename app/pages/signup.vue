@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const localePath = useLocalePath()
 definePageMeta({ layout: false })
 
 const { refresh } = useSession()
@@ -78,7 +79,7 @@ async function submit() {
         Hemos enviado un enlace de verificación a <strong>{{ email }}</strong>.
         Al confirmarlo podrás iniciar sesión.
       </p>
-      <UButton to="/signin" class="mt-5" variant="soft">Ir a iniciar sesión</UButton>
+      <UButton :to="localePath('/signin')" class="mt-5" variant="soft">Ir a iniciar sesión</UButton>
     </div>
 
     <form v-else class="space-y-4" :data-ready="mounted ? 'true' : 'false'" @submit.prevent="submit">
@@ -158,7 +159,7 @@ async function submit() {
 
     <p class="mt-4 text-center text-sm text-slate-500">
       ¿Ya tienes cuenta?
-      <NuxtLink to="/signin" class="font-medium text-sky-600 hover:text-sky-700">
+      <NuxtLink :to="localePath('/signin')" class="font-medium text-sky-600 hover:text-sky-700">
         Iniciar sesión
       </NuxtLink>
     </p>

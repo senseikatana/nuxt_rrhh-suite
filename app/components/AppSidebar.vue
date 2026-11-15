@@ -8,7 +8,7 @@ withDefaults(defineProps<{ sections: NavSection[]; collapsed?: boolean; showTogg
 const emit = defineEmits<{ navigate: []; toggle: [] }>()
 
 const route = useRoute()
-const { t } = useI18nLite()
+const { t } = useI18n()
 const { state } = useSession()
 
 const logoUrl = computed<string | null>(() => state.value?.settings.logoUrl ?? null)
@@ -49,7 +49,7 @@ function isActive(to: string) {
         v-if="!collapsed && showToggle"
         type="button"
         class="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-        :title="t('menu')"
+        :title="t('nav.menu')"
         @click="emit('toggle')"
       >
         <UIcon name="i-lucide-chevrons-left" class="size-4" />
@@ -59,7 +59,7 @@ function isActive(to: string) {
       v-if="collapsed && showToggle"
       type="button"
       class="mx-auto mt-1 rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-      :title="t('menu')"
+      :title="t('nav.menu')"
       @click="emit('toggle')"
     >
       <UIcon name="i-lucide-chevrons-right" class="size-4" />
