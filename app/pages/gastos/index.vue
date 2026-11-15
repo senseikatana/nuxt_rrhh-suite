@@ -38,9 +38,47 @@ const form = reactive({
   lines: [{ date: todayIso(), category: 'Dietas', description: '', amount: 0 }],
 })
 
-const categories = ['Dietas', 'Transporte', 'Alojamiento', 'Material', 'Formación', 'Otros']
+const DEFAULT_CATEGORIES = ['Dietas', 'Transporte', 'Alojamiento', 'Material', 'Formación', 'Otros']
+
+interface ExpenseCategory {
+  id: string
+  name: string
+  color: string
+  active: boolean
+}
+
+const categoryCatalog = ref<ExpenseCategory[]>([])
+
+/** Categorías por defecto + las creadas por la empresa (p. ej. EPIs). */
+const categories = computed(() => [
+  ...new Set([
+    ...DEFAULT_CATEGORIES,
+    ...categoryCatalog.value.filter((category) => category.active).map((category) => category.name),
+  ]),
+])
 
 const ownEmployeeId = computed(() => state.value?.employee?.id ?? null)
+
+/** Totales por categoría para monitorizar compras de material, EPIs, etc. */
+const categoryTotals = computed(() => {
+  const buckets = new Map<string, { total: number; lines: number }>()
+  for (const report of reports.value) {
+    if (report.status === 'rejected') continue
+    for (const line of report.lines) {
+      const bucket = buckets.get(line.category) ?? { total: 0, lines: 0 }
+      bucket.total += Number(line.amount) || 0
+      bucket.lines += 1
+      buckets.set(line.category, bucket)
+    }
+  }
+  return [...buckets.entries()]
+    .map(([name, data]) => ({
+      name,
+      total: Math.round(data.total * 100) / 100,
+      lines: data.lines,
+    }))
+    .sort((a, b) => b.total - a.total)
+})
 
 const stats = computed(() => {
   const pending = reports.value.filter((r) => r.status === 'submitted')
@@ -67,6 +105,14 @@ async function load() {
     error.value = errorMessage(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadCategories() {
+  try {
+    categoryCatalog.value = await $fetch<ExpenseCategory[]>('/api/expenses/categories')
+  } catch {
+    categoryCatalog.value = []
   }
 }
 
@@ -107,7 +153,7 @@ async function createReport() {
     formOpen.value = false
     form.notes = ''
     form.lines = [{ date: todayIso(), category: 'Dietas', description: '', amount: 0 }]
-    await load()
+    await Promise.all([load(), loadCategories()])
   } catch (e) {
     toast.add({ title: errorMessage(e), color: 'error' })
   } finally {
@@ -119,6 +165,24 @@ async function submitReport(report: ExpenseReport) {
   try {
     await $fetch(`/api/expenses/${report.id}/submit`, { method: 'POST' })
     toast.add({ title: 'Enviada a validación', color: 'success' })
+    await load()
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
+
+async function removeReport(report: ExpenseReport) {
+  const ok = await confirm({
+    title: 'Eliminar nota de gasto',
+    description: `Se borrará la nota de ${report.employeeName} por ${formatCurrency(report.total)} con sus líneas.`,
+    danger: true,
+    confirmLabel: 'Eliminar',
+  })
+  if (!ok) return
+
+  try {
+    await $fetch(`/api/expenses/${report.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Nota eliminada', color: 'success' })
     await load()
   } catch (e) {
     toast.add({ title: errorMessage(e), color: 'error' })
@@ -149,7 +213,10 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void loadCategories()
+})
 </script>
 
 <template>
@@ -171,6 +238,30 @@ onMounted(load)
       <StatCard label="Total" :value="reports.length" hint="notas registradas" icon="i-lucide-receipt" tone="violet" />
     </div>
 
+    <!-- Monitorización por categoría (compras de material, EPIs, etc.) -->
+    <div
+      v-if="categoryTotals.length"
+      class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold text-slate-900">Gasto por categoría</h2>
+        <span class="text-xs text-slate-500">Sin contar notas rechazadas</span>
+      </div>
+      <ul class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <li
+          v-for="row in categoryTotals"
+          :key="row.name"
+          class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2"
+        >
+          <div class="min-w-0">
+            <p class="truncate text-sm font-medium text-slate-800">{{ row.name }}</p>
+            <p class="text-[11px] text-slate-500">{{ row.lines }} línea(s)</p>
+          </div>
+          <p class="text-sm font-semibold text-slate-900">{{ formatCurrency(row.total) }}</p>
+        </li>
+      </ul>
+    </div>
+
     <!-- Alta de nota -->
     <div v-if="formOpen" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 class="text-sm font-semibold text-slate-900">Nueva nota de gasto</h2>
@@ -181,9 +272,12 @@ onMounted(load)
           class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-12"
         >
           <input v-model="line.date" type="date" class="rounded-lg border border-slate-300 px-2 py-1.5 text-sm sm:col-span-2" >
-          <select v-model="line.category" class="rounded-lg border border-slate-300 px-2 py-1.5 text-sm sm:col-span-3">
-            <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
-          </select>
+          <input
+            v-model="line.category"
+            list="expense-category-options"
+            placeholder="Categoría"
+            class="rounded-lg border border-slate-300 px-2 py-1.5 text-sm sm:col-span-3"
+          >
           <input v-model="line.description" placeholder="Descripción" class="rounded-lg border border-slate-300 px-2 py-1.5 text-sm sm:col-span-4" >
           <input v-model.number="line.amount" type="number" min="0" step="0.01" placeholder="0,00" class="rounded-lg border border-slate-300 px-2 py-1.5 text-sm sm:col-span-2" >
           <button
@@ -196,6 +290,13 @@ onMounted(load)
             <UIcon name="i-lucide-x" class="mx-auto size-4" />
           </button>
         </div>
+        <datalist id="expense-category-options">
+          <option v-for="category in categories" :key="category" :value="category" />
+        </datalist>
+        <p class="text-xs text-slate-500">
+          Elige una categoría o escribe una nueva (p. ej. EPIs, Material de seguridad). Se
+          guardará en el catálogo al crear la nota, para poder monitorizarla.
+        </p>
         <UButton variant="soft" color="neutral" icon="i-lucide-plus" size="sm" @click="addLine">
           Añadir línea
         </UButton>
@@ -290,6 +391,16 @@ onMounted(load)
           >
             Reembolsar
           </UButton>
+          <UButton
+            v-if="report.status === 'draft' && (isManager || report.employeeId === ownEmployeeId)"
+            size="xs"
+            color="error"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            aria-label="Eliminar nota"
+            title="Eliminar nota"
+            @click="removeReport(report)"
+          />
         </div>
       </article>
     </div>

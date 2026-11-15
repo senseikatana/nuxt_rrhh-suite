@@ -539,6 +539,29 @@ export const expenseLines = pgTable(
   (t) => [index('expense_lines_report_idx').on(t.reportId)],
 )
 
+/**
+ * Catálogo de categorías de gasto por empresa.
+ *
+ * Las líneas guardan el nombre de la categoría como texto, así que borrar o
+ * renombrar una categoría no altera el histórico ya registrado. Este catálogo
+ * es el que alimenta el selector y permite añadir categorías nuevas (EPIs,
+ * material de seguridad, compras de empresa…) sin tocar código.
+ */
+export const expenseCategories = pgTable(
+  'expense_categories',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('orgId')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    color: text('color').notNull().default('#0ea5e9'),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex('expense_categories_org_name_uq').on(t.orgId, t.name)],
+)
+
 /* ------------------------------------------------------------------ */
 /* Nóminas (F3)                                                       */
 /* ------------------------------------------------------------------ */

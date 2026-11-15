@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import * as schema from '../../database/schema'
 import { recordAudit } from '../../utils/audit'
+import { ensureExpenseCategories } from '../../utils/expense-categories'
 import { getContext } from '../../utils/hr'
 
 const lineSchema = z.object({
@@ -40,6 +41,12 @@ export default defineEventHandler(async (event) => {
   const id = crypto.randomUUID()
   const now = new Date()
   const total = lines.reduce((sum, line) => sum + line.amount, 0)
+
+  // Categorías nuevas (EPIs, material de seguridad…) pasan al catálogo.
+  // Un fallo del catálogo no debe impedir registrar la nota.
+  await ensureExpenseCategories(db, org.id, lines.map((line) => line.category)).catch((error) =>
+    console.error('[expense-categories]', error),
+  )
 
   await db.transaction(async (tx) => {
     await tx.insert(schema.expenseReports).values({

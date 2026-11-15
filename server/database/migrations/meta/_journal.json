@@ -43,6 +43,13 @@
       "when": 1794748522412,
       "tag": "0005_public_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794753207282,
+      "tag": "0006_expense_categories",
+      "breakpoints": true
     }
   ]
 }
