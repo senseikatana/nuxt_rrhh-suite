@@ -417,6 +417,8 @@ export const auditLog = pgTable(
     entityId: text('entityId'),
     before: text('before'),
     after: text('after'),
+    ipAddress: text('ipAddress'),
+    userAgent: text('userAgent'),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
   },
   (t) => [index('audit_entity_idx').on(t.entity, t.entityId)],

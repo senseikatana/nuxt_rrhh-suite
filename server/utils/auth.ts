@@ -48,6 +48,10 @@ function createAuth() {
             'Pulsa este enlace para crear una nueva contraseña. Caduca en 1 hora:',
             url,
             '',
+            '⚠️ Si no has solicitado este cambio, tu contraseña NO se verá',
+            'modificada. Responde este email o contacta con administración.',
+            'Nunca comparta este enlace ni lo envíes a terceros.',
+            '',
             'Si no has solicitado el cambio, ignora este mensaje.',
           ].join('\n'),
         })
@@ -135,8 +139,39 @@ function createAuth() {
     advanced: {
       useSecureCookies:
         process.env.NODE_ENV === 'production' && config.betterAuthUrl.startsWith('https://'),
+      // SameSite=Strict + Secure + httpOnly: evita que cualquier cookie de
+      // better-auth se envíe en peticiones cross-site (CSRF de primera capa)
+      // o se lea desde JS (XSS). En desarrollo (http) SameSite=Strict rompe
+      // el flujo de OAuth locales, por eso solo se fuerza en producción.
+      ...(process.env.NODE_ENV === 'production'
+        ? {
+            defaultCookieAttributes: {
+              sameSite: 'strict',
+              secure: true,
+              httpOnly: true,
+            },
+          }
+        : {}),
       database: {
         joins: true,
+      },
+    },
+
+    // Rate limiting global: better-auth lo tiene integrado pero deshabilitado
+    // por defecto. Lo activamos en producción y reforzamos los endpoints de
+    // autenticación con customRules más estrictos.
+    rateLimit: {
+      enabled: process.env.NODE_ENV === 'production',
+      window: 60,
+      max: 100,
+      customRules: {
+        '/sign-in/email': { window: 60, max: 5 },
+        '/sign-in/social': { window: 60, max: 5 },
+        '/sign-up/email': { window: 3600, max: 3 },
+        '/request-password-reset': { window: 3600, max: 3 },
+        '/reset-password': { window: 3600, max: 5 },
+        '/change-password': { window: 3600, max: 5 },
+        '/send-verification-email': { window: 3600, max: 3 },
       },
     },
   })

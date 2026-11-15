@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
     entityId: id,
     before: { status: request.status },
     after: { status: 'cancelled' },
-  })
+  }, event)
 
   return { ok: true, status: 'cancelled' }
 })

@@ -106,6 +106,37 @@ export async function getAttendanceSummary(
   )
 }
 
+export type JornadaState = 'none' | 'open' | 'closed'
+
+/**
+ * Estado de la jornada de un empleado en un día local.
+ *
+ * Regla de negocio: solo se permite una jornada (entrada + salida) por día.
+ * - 'none': sin fichajes ese día (se puede fichar la entrada).
+ * - 'open': jornada abierta, hay entrada sin salida (solo corresponde la salida).
+ * - 'closed': jornada ya completada (no se admiten más fichajes ese día).
+ *
+ * Las sesiones se imputan al día en que empiezan, igual que en los resúmenes,
+ * así un turno de noche cuenta como la jornada de su día de entrada.
+ */
+export async function getJornadaState(
+  db: Db,
+  employeeId: string,
+  dateKey: string,
+  timeZone: string,
+): Promise<JornadaState> {
+  const from = startOfLocalDay(dateKey, timeZone)
+  const to = endOfLocalDay(dateKey, timeZone)
+  const events = await getClockEvents(db, employeeId, from, to)
+  const { sessions } = pairClockEvents(events)
+  const daySessions = sessions.filter(
+    (session) => localDateKey(session.start, timeZone) === dateKey,
+  )
+
+  if (daySessions.some((session) => session.open)) return 'open'
+  return daySessions.length > 0 ? 'closed' : 'none'
+}
+
 export async function getEmployeeById(db: Db, orgId: string, employeeId: string) {
   const [employee] = await db
     .select()

@@ -13,6 +13,7 @@ export default defineEventHandler(async (event) => {
       minNoticeDays: settings.minNoticeDays,
       workweek: settings.workweek,
       overtimeHoursPerDay: settings.overtimeHoursPerDay,
+      logoUrl: settings.logoUrl,
     },
   }
 })

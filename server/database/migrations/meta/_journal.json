@@ -29,6 +29,13 @@
       "when": 1794141631501,
       "tag": "0003_wise_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794740667272,
+      "tag": "0004_add_audit_ip_useragent",
+      "breakpoints": true
     }
   ]
 }

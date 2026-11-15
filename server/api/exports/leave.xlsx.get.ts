@@ -151,7 +151,7 @@ export default defineEventHandler(async (event) => {
   requestSheet.columns = [
     { header: 'Empleado', key: 'employee', width: 28 },
     { header: 'Tipo', key: 'type', width: 22 },
-    { header: 'Inicio', key: 'startDate', width: 14 },
+    { header: 'Fecha inicio', key: 'startDate', width: 14 },
     { header: 'Fin', key: 'endDate', width: 14 },
     { header: 'Días', key: 'days', width: 10 },
     { header: 'Estado', key: 'status', width: 14 },

@@ -93,7 +93,7 @@ export default defineEventHandler(async (event) => {
     entityId: id,
     before: { status: request.status },
     after: { status: parsed.data.decision === 'approve' ? 'approved' : 'rejected' },
-  })
+  }, event)
 
   await queueEmail(db, {
     employeeId: requestEmployee.id,

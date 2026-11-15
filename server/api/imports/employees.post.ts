@@ -59,8 +59,27 @@ export default defineEventHandler(async (event) => {
   const parts = await readMultipartFormData(event)
   const file = parts?.find((part) => part.filename && part.data.length > 0)
 
-  if (!file) {
+  if (!file || !file.filename) {
     throw createError({ statusCode: 400, statusMessage: 'Adjunta un archivo .xlsx' })
+  }
+
+  // Validación de seguridad: solo .xlsx y tamaño máximo 10MB
+  const filename = file.filename.toLowerCase()
+  if (!filename.endsWith('.xlsx')) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Solo se permiten archivos .xlsx',
+      data: { code: 'INVALID_FILE_EXTENSION' },
+    })
+  }
+
+  const MAX_SIZE = 10 * 1024 * 1024 // 10MB
+  if (file.data.byteLength > MAX_SIZE) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `El archivo excede el tamaño máximo de ${MAX_SIZE / 1024 / 1024}MB`,
+      data: { code: 'FILE_TOO_LARGE' },
+    })
   }
 
   const workbook = new ExcelJS.Workbook()
@@ -319,7 +338,7 @@ export default defineEventHandler(async (event) => {
     action: 'employees.import',
     entity: 'employee',
     after: { created: result.created, updated: result.updated, holidays: result.holidays },
-  })
+  }, event)
 
   return result
 })

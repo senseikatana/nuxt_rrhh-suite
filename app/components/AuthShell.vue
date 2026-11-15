@@ -17,7 +17,7 @@ defineProps<{
         </span>
         <div>
           <p class="text-sm font-semibold text-white">RRHH Suite</p>
-          <p class="text-xs text-slate-400">Gestión de personas para hoteles</p>
+          <p class="text-xs text-slate-400">Gestión de personas para cualquier empresa</p>
         </div>
       </div>
 
@@ -54,7 +54,7 @@ defineProps<{
         </div>
       </div>
 
-      <p class="relative text-xs text-slate-500">RRHH Suite · Fase 1 · Vacaciones y ausencias</p>
+      <p class="relative text-xs text-slate-500">RRHH Suite · Gestión de personas</p>
     </aside>
 
     <main class="flex items-center justify-center bg-slate-50 px-4 py-12">

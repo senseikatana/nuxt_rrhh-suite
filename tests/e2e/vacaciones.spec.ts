@@ -14,7 +14,7 @@ async function login(page: Page, email: string, password: string) {
 }
 
 test('un empleado solicita vacaciones y las ve en su lista', async ({ page }) => {
-  await login(page, 'empleado@hotelmarina.test', 'Empleado1234!')
+  await login(page, 'empleado@onada.test', 'Empleado1234!')
 
   await expect(page.getByRole('heading', { name: /Hola, Nuria/ })).toBeVisible()
 
@@ -37,7 +37,7 @@ test('un empleado solicita vacaciones y las ve en su lista', async ({ page }) =>
 })
 
 test('un mando aprueba una solicitud pendiente', async ({ page }) => {
-  await login(page, 'manager@hotelmarina.test', 'Manager1234!')
+  await login(page, 'manager@onada.test', 'Manager1234!')
 
   await goto(page, '/vacaciones/aprobaciones')
   await expect(page.getByRole('heading', { name: 'Aprobaciones' })).toBeVisible()
@@ -51,7 +51,7 @@ test('un mando aprueba una solicitud pendiente', async ({ page }) => {
 })
 
 test('el calendario anual muestra la rejilla de empleados y meses', async ({ page }) => {
-  await login(page, 'manager@hotelmarina.test', 'Manager1234!')
+  await login(page, 'manager@onada.test', 'Manager1234!')
 
   await goto(page, '/vacaciones/calendario')
   await expect(page.getByRole('heading', { name: 'Calendario anual' })).toBeVisible()
@@ -60,7 +60,7 @@ test('el calendario anual muestra la rejilla de empleados y meses', async ({ pag
 })
 
 test('la plantilla Excel se descarga', async ({ page }) => {
-  await login(page, 'admin@hotelmarina.test', 'Admin1234!')
+  await login(page, 'admin@onada.test', 'Admin1234!')
 
   await goto(page, '/empleados')
   const downloadPromise = page.waitForEvent('download')
@@ -71,7 +71,7 @@ test('la plantilla Excel se descarga', async ({ page }) => {
 })
 
 test('la administración ve y guarda los ajustes', async ({ page }) => {
-  await login(page, 'admin@hotelmarina.test', 'Admin1234!')
+  await login(page, 'admin@onada.test', 'Admin1234!')
 
   await goto(page, '/ajustes')
   await expect(page.getByRole('heading', { name: 'Ajustes', exact: true })).toBeVisible()
@@ -84,7 +84,7 @@ test('la administración ve y guarda los ajustes', async ({ page }) => {
 test('un usuario nuevo puede registrarse', async ({ page }) => {
   await goto(page, '/signup')
 
-  const email = `nuevo.${Date.now()}@hotelmarina.test`
+  const email = `nuevo.${Date.now()}@onada.test`
 
   await page.getByLabel('Nombre').fill('Nuevo Usuario')
   await page.getByLabel('Email').fill(email)
@@ -100,14 +100,14 @@ test('un usuario nuevo puede registrarse', async ({ page }) => {
 test('la recuperación de contraseña responde con un mensaje genérico', async ({ page }) => {
   await goto(page, '/forgot-password')
 
-  await page.getByLabel('Email').fill('empleado@hotelmarina.test')
+  await page.getByLabel('Email').fill('empleado@onada.test')
   await page.getByRole('button', { name: 'Enviar enlace' }).click()
 
   await expect(page.getByText('Revisa tu correo')).toBeVisible()
 })
 
 test('la cuenta muestra perfil, contraseña y sesiones', async ({ page }) => {
-  await login(page, 'empleado@hotelmarina.test', 'Empleado1234!')
+  await login(page, 'empleado@onada.test', 'Empleado1234!')
 
   await goto(page, '/cuenta')
   await expect(page.getByRole('heading', { name: 'Mi cuenta' })).toBeVisible()
@@ -116,7 +116,7 @@ test('la cuenta muestra perfil, contraseña y sesiones', async ({ page }) => {
 })
 
 test('un empleado ficha la entrada y la salida', async ({ page }) => {
-  await login(page, 'empleado@hotelmarina.test', 'Empleado1234!')
+  await login(page, 'empleado@onada.test', 'Empleado1234!')
 
   await goto(page, '/fichaje')
   await expect(page.getByRole('heading', { name: 'Fichaje y jornada' })).toBeVisible()
@@ -133,7 +133,7 @@ test('un empleado ficha la entrada y la salida', async ({ page }) => {
 })
 
 test('un mando ve el equipo, corrige un fichaje y exporta el registro', async ({ page }) => {
-  await login(page, 'manager@hotelmarina.test', 'Manager1234!')
+  await login(page, 'manager@onada.test', 'Manager1234!')
 
   await goto(page, '/fichaje')
   await expect(page.getByRole('heading', { name: 'Equipo ahora' })).toBeVisible()

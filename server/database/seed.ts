@@ -12,6 +12,7 @@ import * as schema from './schema'
 import { computeEntitlement } from '../services/leave/accrual'
 import { countLeaveDays } from '../services/leave/working-days'
 import { DEFAULT_SETTINGS, mergeSettings } from '../services/settings'
+import { generateOrgId } from '../services/organization'
 
 const db = createDb()
 const now = new Date()
@@ -37,16 +38,19 @@ async function main() {
     defaultScheduleEnd: JSON.stringify('14:50'),
     seniority: JSON.stringify({ everyYears: 5, extraDays: 1, maxExtraDays: 5 }),
     approvalLevels: JSON.stringify(1),
+    logoUrl: JSON.stringify('/branding/fundacio-onada.png'),
   })
 
-  const orgId = 'org-hotelmarina'
+  const orgName = 'Fundación Onada'
+  const orgId = generateOrgId(orgName)
   const createdAt = now
 
   await db.insert(schema.organizations).values({
     id: orgId,
-    name: 'Hotel Marina Salou',
-    slug: 'hotel-marina-salou',
+    name: orgName,
+    slug: 'fundacion-onada',
     timezone: 'Europe/Madrid',
+    logoPath: '/branding/fundacio-onada.png',
     createdAt,
     updatedAt: createdAt,
   })
@@ -63,6 +67,7 @@ async function main() {
     defaultScheduleEnd: settings.defaultScheduleEnd,
     seniority: settings.seniority,
     approvalLevels: settings.approvalLevels,
+    logoUrl: settings.logoUrl,
   })) {
     await db.insert(schema.settings).values({
       id: `set-${key}`,
@@ -92,21 +97,21 @@ async function main() {
     {
       id: 'usr-admin',
       name: 'Laura Ferrer',
-      email: 'admin@hotelmarina.test',
+      email: 'admin@onada.test',
       role: 'admin' as const,
       password: passwordHash.admin,
     },
     {
       id: 'usr-manager',
       name: 'Marc Puig',
-      email: 'manager@hotelmarina.test',
+      email: 'manager@onada.test',
       role: 'manager' as const,
       password: passwordHash.manager,
     },
     {
       id: 'usr-employee',
       name: 'Nuria Solé',
-      email: 'empleado@hotelmarina.test',
+      email: 'empleado@onada.test',
       role: 'employee' as const,
       password: passwordHash.employee,
     },
@@ -179,7 +184,7 @@ async function main() {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]/g, '')
-    const email = `${slug(person.firstName)}.${slug(person.lastName)}@hotelmarina.test`
+    const email = `${slug(person.firstName)}.${slug(person.lastName)}@onada.test`
 
     await db.insert(schema.employees).values({
       id: person.id,
@@ -383,9 +388,9 @@ async function main() {
   }
 
   console.log('✓ Seed completado')
-  console.log('  admin@hotelmarina.test     / Admin1234!')
-  console.log('  manager@hotelmarina.test   / Manager1234!')
-  console.log('  empleado@hotelmarina.test  / Empleado1234!')
+  console.log('  admin@onada.test     / Admin1234!')
+  console.log('  manager@onada.test   / Manager1234!')
+  console.log('  empleado@onada.test  / Empleado1234!')
 }
 
 main()

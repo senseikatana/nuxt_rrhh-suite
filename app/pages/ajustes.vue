@@ -14,6 +14,7 @@ interface OrgSettingsResponse {
   defaultScheduleEnd: string | null
   approvalLevels: number
   seniority: { everyYears: number; extraDays: number; maxExtraDays?: number } | null
+  logoUrl: string | null
 }
 
 interface AuditRow {
@@ -55,6 +56,7 @@ const form = reactive({
   everyYears: 5,
   extraDays: 1,
   maxExtraDays: 5,
+  logoUrl: '',
 })
 
 const hydrated = ref(false)
@@ -78,6 +80,7 @@ watchEffect(() => {
   form.everyYears = value.seniority?.everyYears ?? 5
   form.extraDays = value.seniority?.extraDays ?? 1
   form.maxExtraDays = value.seniority?.maxExtraDays ?? 5
+  form.logoUrl = value.logoUrl ?? ''
   hydrated.value = true
 })
 
@@ -132,6 +135,7 @@ async function save() {
         defaultScheduleStart: form.defaultScheduleStart || null,
         defaultScheduleEnd: form.defaultScheduleEnd || null,
         approvalLevels: Number(form.approvalLevels),
+        logoUrl: form.logoUrl || null,
         workweek: form.workweek,
         seniority: form.seniorityEnabled
           ? {
@@ -314,6 +318,33 @@ async function save() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-sm font-semibold text-slate-900">Marca de la empresa</h2>
+      <p class="mt-1 text-xs text-slate-500">
+        Logo que se muestra en el menú. Sirve para cualquier empresa (white-label).
+      </p>
+      <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div
+          class="flex h-16 w-40 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-2"
+        >
+          <img
+            v-if="form.logoUrl"
+            :src="form.logoUrl"
+            alt="Logo de la empresa"
+            class="max-h-full max-w-full object-contain"
+          >
+          <span v-else class="text-xs text-slate-400">Sin logo</span>
+        </div>
+        <div class="flex-1">
+          <label class="mb-1.5 block text-sm font-medium text-slate-700">URL del logo</label>
+          <UInput v-model="form.logoUrl" placeholder="/branding/logo.png o https://…" class="w-full" />
+          <p class="mt-1 text-xs text-slate-400">
+            Ruta local (por ejemplo /branding/fundacio-onada.png) o URL absoluta.
+          </p>
         </div>
       </div>
     </div>

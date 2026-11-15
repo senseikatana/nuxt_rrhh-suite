@@ -18,6 +18,8 @@ export interface OrgSettings {
   seniority: SeniorityRule | null
   /** Niveles de aprobación requeridos (1 = manager, 2 = manager + RRHH). */
   approvalLevels: number
+  /** URL del logo de la organización (opcional, white-label). */
+  logoUrl: string | null
 }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
@@ -32,6 +34,7 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   defaultScheduleEnd: null,
   seniority: null,
   approvalLevels: 1,
+  logoUrl: null,
 }
 
 function asNumber(value: unknown, fallback: number): number {
@@ -93,6 +96,8 @@ export function mergeSettings(raw: Record<string, string | undefined | null>): O
     defaultScheduleEnd: asTime(parsed.defaultScheduleEnd),
     seniority,
     approvalLevels: Math.max(1, asNumber(parsed.approvalLevels, DEFAULT_SETTINGS.approvalLevels)),
+    logoUrl:
+      typeof parsed.logoUrl === 'string' && parsed.logoUrl.trim() ? parsed.logoUrl.trim() : null,
   }
 }
 

@@ -1,6 +1,6 @@
 # RRHH Suite
 
-Software de gestión de personas para hoteles y empresas de servicios. Nace del análisis de
+Software genérico de gestión de personas para cualquier empresa. Nace del análisis de
 [astrohms.com/hr](https://astrohms.com/hr) y prioriza **vacaciones y ausencias**, con el resto de
 módulos HR planificados sobre la misma base.
 
@@ -67,11 +67,11 @@ bun run db:migrate && bun run db:seed
 
 | Rol | Email | Contraseña |
 |---|---|---|
-| Administración | `admin@hotelmarina.test` | `Admin1234!` |
-| Mando | `manager@hotelmarina.test` | `Manager1234!` |
-| Empleado | `empleado@hotelmarina.test` | `Empleado1234!` |
+| Administración | `admin@onada.test` | `Admin1234!` |
+| Mando | `manager@onada.test` | `Manager1234!` |
+| Empleado | `empleado@onada.test` | `Empleado1234!` |
 
-El seed crea **Hotel Marina Salou** con 25 empleados en Recepción, Cocina y Pisos, festivos de dos
+El seed crea **Fundación Onada** con 25 empleados en Recepción, Cocina y Pisos, festivos de dos
 años, derechos calculados con antigüedad, solicitudes pendientes y bolsa de horas.
 
 ## Autenticación

@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
     entity: 'overtime_entry',
     entityId: id,
     after: parsed.data,
-  })
+  }, event)
 
   return { ok: true, id }
 })

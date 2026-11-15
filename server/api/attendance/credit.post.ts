@@ -87,7 +87,7 @@ export default defineEventHandler(async (event) => {
     entity: 'overtime_entry',
     entityId: id,
     after: { employeeId: target.id, date: parsed.data.date, hours },
-  })
+  }, event)
 
   return { ok: true, hours, minutes: summary.overtimeMinutes }
 })

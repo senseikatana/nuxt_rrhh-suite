@@ -159,7 +159,7 @@ export default defineEventHandler(async (event) => {
     entity: 'leave_request',
     entityId: id,
     after: { employeeId: employee.id, leaveTypeId, startDate, endDate, days, status },
-  })
+  }, event)
 
   if (status === 'pending') {
     const approver = await getApproverForDepartment(db, org.id, employee.departmentId)

@@ -1,0 +1,139 @@
+import type { AppLocale } from './usePreferences'
+
+/**
+ * Traducción ligera del "shell" de la aplicación: navegación, menú de usuario
+ * y títulos de sección. No traduce el contenido de cada página (eso requiere
+ * el módulo i18n de Nuxt); sí cubre la interfaz que ve el usuario todo el rato.
+ *
+ * Si una clave falta en el idioma activo, cae a español y, en último caso,
+ * devuelve la propia clave para evitar romper el render.
+ */
+type Dictionary = Record<string, string>
+
+const MESSAGES: Record<AppLocale, Dictionary> = {
+  es: {
+    secPrincipal: 'Principal',
+    secPersonal: 'Personal',
+    secGestion: 'Gestión',
+    secErp: 'ERP',
+    secAdmin: 'Administración',
+    dashboard: 'Dashboard',
+    herramientas: 'Herramientas',
+    vacaciones: 'Vacaciones',
+    calendario: 'Calendario',
+    aprobaciones: 'Aprobaciones',
+    empleados: 'Empleados',
+    fichaje: 'Fichaje',
+    turnos: 'Turnos',
+    gastos: 'Gastos',
+    nominas: 'Nóminas',
+    reclutamiento: 'Reclutamiento',
+    denuncias: 'Denuncias',
+    erpPanel: 'Panel ERP',
+    sales: 'Ventas',
+    purchases: 'Compras',
+    warehouse: 'Almacén',
+    demand: 'Demanda',
+    routes: 'Rutas',
+    activity: 'Actividad',
+    settings: 'Ajustes',
+    account: 'Mi cuenta',
+    theme: 'Tema',
+    language: 'Idioma',
+    light: 'Claro',
+    dark: 'Oscuro',
+    system: 'Sistema',
+    logout: 'Cerrar sesión',
+    menu: 'Menú',
+    roleAdmin: 'Administración',
+    roleManager: 'Mando',
+    roleEmployee: 'Empleado',
+  },
+  en: {
+    secPrincipal: 'Main',
+    secPersonal: 'People',
+    secGestion: 'Management',
+    secErp: 'ERP',
+    secAdmin: 'Administration',
+    dashboard: 'Dashboard',
+    herramientas: 'Tools',
+    vacaciones: 'Time off',
+    calendario: 'Calendar',
+    aprobaciones: 'Approvals',
+    empleados: 'Employees',
+    fichaje: 'Clock',
+    turnos: 'Shifts',
+    gastos: 'Expenses',
+    nominas: 'Payroll',
+    reclutamiento: 'Recruiting',
+    denuncias: 'Complaints',
+    erpPanel: 'ERP Panel',
+    sales: 'Sales',
+    purchases: 'Purchases',
+    warehouse: 'Warehouse',
+    demand: 'Demand',
+    routes: 'Routes',
+    activity: 'Activity',
+    settings: 'Settings',
+    account: 'My account',
+    theme: 'Theme',
+    language: 'Language',
+    light: 'Light',
+    dark: 'Dark',
+    system: 'System',
+    logout: 'Sign out',
+    menu: 'Menu',
+    roleAdmin: 'Administrator',
+    roleManager: 'Manager',
+    roleEmployee: 'Employee',
+  },
+  ca: {
+    secPrincipal: 'Principal',
+    secPersonal: 'Personal',
+    secGestion: 'Gestió',
+    secErp: 'ERP',
+    secAdmin: 'Administració',
+    dashboard: 'Dashboard',
+    herramientas: 'Eines',
+    vacaciones: 'Vacances',
+    calendario: 'Calendari',
+    aprobaciones: 'Aprovacions',
+    empleados: 'Empleats',
+    fichaje: 'Fitxatge',
+    turnos: 'Torns',
+    gastos: 'Despeses',
+    nominas: 'Nòmines',
+    reclutamiento: 'Recrutament',
+    denuncias: 'Denúncies',
+    erpPanel: 'Panell ERP',
+    sales: 'Vendes',
+    purchases: 'Compres',
+    warehouse: 'Magatzem',
+    demand: 'Demanda',
+    routes: 'Rutes',
+    activity: 'Activitat',
+    settings: 'Configuració',
+    account: 'El meu compte',
+    theme: 'Tema',
+    language: 'Idioma',
+    light: 'Clar',
+    dark: 'Fosc',
+    system: 'Sistema',
+    logout: 'Tancar sessió',
+    menu: 'Menú',
+    roleAdmin: 'Administració',
+    roleManager: 'Cap',
+    roleEmployee: 'Empleat',
+  },
+}
+
+export function useI18nLite() {
+  const { locale } = usePreferences()
+
+  function t(key: string): string {
+    const table = MESSAGES[locale.value as AppLocale] ?? MESSAGES.es
+    return table[key] ?? MESSAGES.es[key] ?? key
+  }
+
+  return { t, locale }
+}

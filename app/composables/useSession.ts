@@ -32,6 +32,8 @@ export interface SessionSettings {
   minNoticeDays: number
   workweek: number[]
   overtimeHoursPerDay: number
+  /** Logo de la organización (white-label). */
+  logoUrl: string | null
 }
 
 export interface SessionState {

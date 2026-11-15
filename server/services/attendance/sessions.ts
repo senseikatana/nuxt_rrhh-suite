@@ -303,6 +303,8 @@ export function summarizeRange(
 
 export interface AttendanceStatus {
   clockedIn: boolean
+  /** Ya se registró la jornada del día (entrada + salida). */
+  jornadaComplete: boolean
   openSince: Date | null
   elapsedMinutes: number
   lastDirection: ClockDirection | null
@@ -345,6 +347,7 @@ export function buildStatus(
 
   return {
     clockedIn: Boolean(openSession),
+    jornadaComplete: !openSession && day.sessions.length > 0,
     openSince: openSession?.start ?? null,
     elapsedMinutes: openSession?.minutes ?? 0,
     lastDirection: lastEvent?.direction ?? null,

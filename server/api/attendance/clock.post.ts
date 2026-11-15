@@ -3,7 +3,8 @@ import { z } from 'zod'
 import * as schema from '../../database/schema'
 import { getContext } from '../../utils/hr'
 import { recordAudit } from '../../utils/audit'
-import { getAttendanceStatus } from '../../utils/attendance'
+import { getAttendanceStatus, getJornadaState } from '../../utils/attendance'
+import { localDateKey } from '../../services/attendance/time'
 
 const clockSchema = z.object({
   direction: z.enum(['in', 'out']).optional(),
@@ -22,6 +23,18 @@ export default defineEventHandler(async (event) => {
   const parsed = clockSchema.safeParse((await readBody(event)) ?? {})
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: 'Fichaje inválido' })
+  }
+
+  const now = new Date()
+  const todayKey = localDateKey(now, org.timezone)
+
+  // Una sola jornada (entrada + salida) por día, para todos los roles.
+  const jornada = await getJornadaState(db, employee.id, todayKey, org.timezone)
+  if (jornada === 'closed') {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Ya registraste tu jornada de hoy. Solo se permite un fichaje por día.',
+    })
   }
 
   const [last] = await db
@@ -44,7 +57,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const now = new Date()
   const userAgent = getHeader(event, 'user-agent') ?? null
   const source = /mobile|android|iphone|ipad/i.test(userAgent ?? '') ? 'mobile' : 'web'
 
@@ -68,7 +80,7 @@ export default defineEventHandler(async (event) => {
     entity: 'clock_event',
     entityId: employee.id,
     after: { direction, occurredAt: now.toISOString(), source },
-  })
+  }, event)
 
   return getAttendanceStatus(db, employee, org, settings, now)
 })

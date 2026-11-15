@@ -68,5 +68,10 @@
       "esbuild",
       "vue-demi"
     ]
-  }
+  },
+  "trustedDependencies": [
+    "core-js",
+    "esbuild",
+    "vue-demi"
+  ]
 }

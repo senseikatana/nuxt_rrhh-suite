@@ -7,7 +7,15 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   ui: {
-    colorMode: false,
+    colorMode: true,
+  },
+
+  // Tema por defecto claro; el usuario puede cambiarlo desde el menú de usuario.
+  // classSuffix vacío => la clase aplicada es `.dark` (coincide con main.css).
+  colorMode: {
+    preference: 'light',
+    fallback: 'light',
+    classSuffix: '',
   },
 
   runtimeConfig: {

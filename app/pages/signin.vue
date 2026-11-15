@@ -3,7 +3,7 @@ definePageMeta({ layout: false })
 
 const { login } = useSession()
 
-const email = ref('admin@hotelmarina.test')
+const email = ref('admin@onada.test')
 const password = ref('Admin1234!')
 const loading = ref(false)
 const error = ref('')
@@ -14,9 +14,9 @@ onMounted(() => {
 })
 
 const demoAccounts = [
-  { label: 'Administración', email: 'admin@hotelmarina.test', password: 'Admin1234!' },
-  { label: 'Mando', email: 'manager@hotelmarina.test', password: 'Manager1234!' },
-  { label: 'Empleado', email: 'empleado@hotelmarina.test', password: 'Empleado1234!' },
+  { label: 'Administración', email: 'admin@onada.test', password: 'Admin1234!' },
+  { label: 'Mando', email: 'manager@onada.test', password: 'Manager1234!' },
+  { label: 'Empleado', email: 'empleado@onada.test', password: 'Empleado1234!' },
 ]
 
 function useAccount(account: (typeof demoAccounts)[number]) {
@@ -124,7 +124,7 @@ async function submit() {
         </button>
       </div>
       <p class="mt-3 text-[11px] leading-relaxed text-slate-400">
-        Datos de ejemplo de un hotel de 25 empleados. No uses estas cuentas en producción.
+        Datos de ejemplo de Fundación Onada. No uses estas cuentas en producción.
       </p>
     </div>
   </AuthShell>

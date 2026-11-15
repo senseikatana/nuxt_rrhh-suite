@@ -3,6 +3,8 @@ import type { NavSection } from '~/types/nav'
 
 const { state, isAdmin, isManager, displayName } = useSession()
 const erpSession = useErpSession()
+const { t } = useI18nLite()
+const { sidebarCollapsed, toggleSidebar } = usePreferences()
 const route = useRoute()
 
 /** Iconos por módulo ERP, para la sección del sidebar. */
@@ -20,16 +22,16 @@ const pendingCount = ref(0)
 
 const sections = computed<NavSection[]>(() => [
   {
-    title: 'Principal',
+    title: t('secPrincipal'),
     items: [
-      { label: 'Inicio', to: '/', icon: 'i-lucide-layout-dashboard' },
-      { label: 'Herramientas', to: '/herramientas', icon: 'i-lucide-layout-grid' },
-      { label: 'Vacaciones', to: '/vacaciones', icon: 'i-lucide-palmtree' },
-      { label: 'Calendario', to: '/vacaciones/calendario', icon: 'i-lucide-calendar-days' },
+      { label: t('dashboard'), to: '/', icon: 'i-lucide-layout-dashboard' },
+      { label: t('herramientas'), to: '/herramientas', icon: 'i-lucide-layout-grid' },
+      { label: t('vacaciones'), to: '/vacaciones', icon: 'i-lucide-palmtree' },
+      { label: t('calendario'), to: '/vacaciones/calendario', icon: 'i-lucide-calendar-days' },
       ...(isManager.value
         ? [
             {
-              label: 'Aprobaciones',
+              label: t('aprobaciones'),
               to: '/vacaciones/aprobaciones',
               icon: 'i-lucide-check-check',
               badge: pendingCount.value,
@@ -39,22 +41,22 @@ const sections = computed<NavSection[]>(() => [
     ],
   },
   {
-    title: 'Personal',
+    title: t('secPersonal'),
     items: [
       ...(isManager.value
-        ? [{ label: 'Empleados', to: '/empleados', icon: 'i-lucide-users' }]
+        ? [{ label: t('empleados'), to: '/empleados', icon: 'i-lucide-users' }]
         : []),
-      { label: 'Fichaje', to: '/fichaje', icon: 'i-lucide-clock' },
-      { label: 'Turnos', to: '/turnos', icon: 'i-lucide-calendar-range', phase: 'F2' },
+      { label: t('fichaje'), to: '/fichaje', icon: 'i-lucide-clock' },
+      { label: t('turnos'), to: '/turnos', icon: 'i-lucide-calendar-range', phase: 'F2' },
     ],
   },
   {
-    title: 'Gestión',
+    title: t('secGestion'),
     items: [
-      { label: 'Gastos', to: '/gastos', icon: 'i-lucide-receipt', phase: 'F3' },
-      { label: 'Nóminas', to: '/nominas', icon: 'i-lucide-banknote', phase: 'F3' },
-      { label: 'Reclutamiento', to: '/reclutamiento', icon: 'i-lucide-user-plus', phase: 'F4' },
-      { label: 'Denuncias', to: '/denuncias', icon: 'i-lucide-shield-check', phase: 'F4' },
+      { label: t('gastos'), to: '/gastos', icon: 'i-lucide-receipt', phase: 'F3' },
+      { label: t('nominas'), to: '/nominas', icon: 'i-lucide-banknote', phase: 'F3' },
+      { label: t('reclutamiento'), to: '/reclutamiento', icon: 'i-lucide-user-plus', phase: 'F4' },
+      { label: t('denuncias'), to: '/denuncias', icon: 'i-lucide-shield-check', phase: 'F4' },
     ],
   },
   // Sección ERP: visible solo para quien tiene un rol ERP (grant en
@@ -62,17 +64,17 @@ const sections = computed<NavSection[]>(() => [
   ...(erpSession.navigation.value.length
     ? [
         {
-          title: 'ERP',
+          title: t('secErp'),
           items: [
             {
-              label: 'Panel ERP',
+              label: t('erpPanel'),
               to: '/erp',
               icon: 'i-lucide-layout-grid',
             },
             ...erpSession.navigation.value
               .filter((entry) => entry.key !== 'dashboard')
               .map((entry) => ({
-                label: entry.label,
+                label: t(entry.key),
                 to: entry.to,
                 icon: ERP_NAV_ICONS[entry.key] ?? 'i-lucide-box',
               })),
@@ -83,8 +85,8 @@ const sections = computed<NavSection[]>(() => [
   ...(isAdmin.value
     ? [
         {
-          title: 'Administración',
-          items: [{ label: 'Ajustes', to: '/ajustes', icon: 'i-lucide-settings' }],
+          title: t('secAdmin'),
+          items: [{ label: t('settings'), to: '/ajustes', icon: 'i-lucide-settings' }],
         },
       ]
     : []),
@@ -125,12 +127,26 @@ watch(
 
 <template>
   <div class="min-h-screen">
-    <aside class="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col bg-slate-900 p-5 lg:flex">
-      <AppSidebar :sections="sections" />
+    <!-- Sidebar de escritorio (colapsable) -->
+    <aside
+      class="fixed inset-y-0 left-0 z-30 hidden flex-col bg-slate-900 transition-[width] duration-200 lg:flex"
+      :class="sidebarCollapsed ? 'w-20 p-2' : 'w-72 p-4'"
+    >
+      <AppSidebar
+        :sections="sections"
+        :collapsed="sidebarCollapsed"
+        @toggle="toggleSidebar"
+      />
     </aside>
 
-    <div class="lg:pl-72">
-      <header class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur lg:hidden">
+    <div
+      class="transition-[padding] duration-200"
+      :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'"
+    >
+      <!-- Cabecera móvil -->
+      <header
+        class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur lg:hidden"
+      >
         <button
           type="button"
           class="rounded-xl border border-slate-200 p-2 text-slate-600"
@@ -159,6 +175,7 @@ watch(
     <!-- Modal global de confirmación/prompt para toda la app. -->
     <DialogHost />
 
+    <!-- Drawer móvil -->
     <Transition
       enter-active-class="transition duration-200"
       enter-from-class="opacity-0"
@@ -175,12 +192,19 @@ watch(
           >
             <UIcon name="i-lucide-x" class="size-5" />
           </button>
-          <AppSidebar :sections="sections" @navigate="mobileOpen = false" />
+          <AppSidebar
+            :sections="sections"
+            :show-toggle="false"
+            @navigate="mobileOpen = false"
+          />
         </aside>
       </div>
     </Transition>
 
-    <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+    <!-- Navegación inferior móvil -->
+    <nav
+      class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+    >
       <div class="flex items-stretch justify-around">
         <NuxtLink
           to="/"
@@ -188,7 +212,7 @@ watch(
           :class="route.path === '/' ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-layout-dashboard" class="size-5" />
-          Inicio
+          {{ t('dashboard') }}
         </NuxtLink>
         <NuxtLink
           to="/vacaciones"
@@ -196,7 +220,7 @@ watch(
           :class="route.path.startsWith('/vacaciones') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-palmtree" class="size-5" />
-          Vacaciones
+          {{ t('vacaciones') }}
         </NuxtLink>
         <NuxtLink
           v-if="isManager"
@@ -205,7 +229,7 @@ watch(
           :class="route.path.includes('aprobaciones') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-check-check" class="size-5" />
-          Aprobar
+          {{ t('aprobaciones') }}
           <span
             v-if="pendingCount"
             class="absolute right-4 top-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white"
@@ -220,7 +244,7 @@ watch(
           :class="route.path.includes('calendario') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-calendar-days" class="size-5" />
-          Calendario
+          {{ t('calendario') }}
         </NuxtLink>
         <NuxtLink
           v-if="isManager"
@@ -229,7 +253,7 @@ watch(
           :class="route.path.startsWith('/empleados') ? 'text-slate-900' : 'text-slate-400'"
         >
           <UIcon name="i-lucide-users" class="size-5" />
-          Equipo
+          {{ t('empleados') }}
         </NuxtLink>
         <button
           v-else
@@ -238,7 +262,7 @@ watch(
           @click="mobileOpen = true"
         >
           <UIcon name="i-lucide-menu" class="size-5" />
-          Más
+          {{ t('menu') }}
         </button>
       </div>
     </nav>

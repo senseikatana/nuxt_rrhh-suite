@@ -284,13 +284,25 @@ function exportRegister() {
 
         <UButton
           size="xl"
-          :color="nextDirection === 'in' ? 'success' : 'error'"
-          :icon="nextDirection === 'in' ? 'i-lucide-log-in' : 'i-lucide-log-out'"
+          :color="status?.jornadaComplete ? 'neutral' : nextDirection === 'in' ? 'success' : 'error'"
+          :icon="
+            status?.jornadaComplete
+              ? 'i-lucide-check-check'
+              : nextDirection === 'in'
+                ? 'i-lucide-log-in'
+                : 'i-lucide-log-out'
+          "
           :loading="clocking"
-          :disabled="!status"
+          :disabled="!status || status?.jornadaComplete"
           @click="toggleClock"
         >
-          {{ nextDirection === 'in' ? 'Fichar entrada' : 'Fichar salida' }}
+          {{
+            status?.jornadaComplete
+              ? 'Jornada completada'
+              : nextDirection === 'in'
+                ? 'Fichar entrada'
+                : 'Fichar salida'
+          }}
         </UButton>
       </div>
 

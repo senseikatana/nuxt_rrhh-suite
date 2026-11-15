@@ -23,6 +23,7 @@ const settingsSchema = z.object({
     .nullable()
     .optional(),
   approvalLevels: z.number().int().min(1).max(2).optional(),
+  logoUrl: z.string().trim().max(500).nullable().optional(),
   seniority: z
     .object({
       everyYears: z.number().int().positive(),
@@ -45,6 +46,7 @@ const KEYS = [
   'defaultScheduleEnd',
   'approvalLevels',
   'seniority',
+  'logoUrl',
 ] as const
 
 export default defineEventHandler(async (event) => {
@@ -105,7 +107,7 @@ export default defineEventHandler(async (event) => {
     entityId: org.id,
     before,
     after,
-  })
+  }, event)
 
   return after
 })

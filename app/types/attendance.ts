@@ -9,6 +9,8 @@ export interface AttendanceClockEvent {
 
 export interface AttendanceStatus {
   clockedIn: boolean
+  /** Ya se registró la jornada del día (entrada + salida). */
+  jornadaComplete: boolean
   openSince: string | null
   elapsedMinutes: number
   lastDirection: 'in' | 'out' | null
