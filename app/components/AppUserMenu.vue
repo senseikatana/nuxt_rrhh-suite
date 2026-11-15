@@ -23,11 +23,10 @@ const themeOptions = computed(() => [
 ])
 
 const localeOptions = computed(() =>
-  locales.value.map((item) =>
-    typeof item === 'string'
-      ? { value: item, label: item.toUpperCase() }
-      : { value: item.code, label: item.name ?? item.code.toUpperCase() },
-  ),
+  (locales.value as Array<string | { code: string; name?: string }>).map((item) => {
+    if (typeof item === 'string') return { value: item, label: item.toUpperCase() }
+    return { value: item.code, label: item.name ?? item.code.toUpperCase() }
+  }),
 )
 
 function setTheme(value: 'light' | 'dark' | 'system') {
