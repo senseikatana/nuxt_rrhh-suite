@@ -1,6 +1,6 @@
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { resolve } from 'node:path'
-import { closeDb, createDb } from './client'
+import { closeDb, createDb } from './client-pg'
 
 const db = createDb()
 

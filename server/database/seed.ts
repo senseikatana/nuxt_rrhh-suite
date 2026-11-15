@@ -7,7 +7,7 @@
  */
 import { hashPassword } from 'better-auth/crypto'
 import { addDays, format, subDays } from 'date-fns'
-import { closeDb, createDb } from './client'
+import { closeDb, createDb } from './client-pg'
 import * as schema from './schema'
 import { computeEntitlement } from '../services/leave/accrual'
 import { countLeaveDays } from '../services/leave/working-days'

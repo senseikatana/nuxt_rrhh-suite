@@ -2,7 +2,7 @@
  * Vacía el esquema público de PostgreSQL.
  * Solo para desarrollo y entornos de demostración.
  */
-import { createPool } from './client'
+import { createPool } from './client-pg'
 
 const connectionString = process.env.DATABASE_URL || ''
 const isLocal = /localhost|127\.0\.0\.1|\[::1\]/.test(connectionString)

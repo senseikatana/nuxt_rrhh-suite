@@ -12,5 +12,7 @@ playwright-report
 .env
 .env.*
 !.env.example
+.dev.vars
+.wrangler
 .DS_Store
 .neon
