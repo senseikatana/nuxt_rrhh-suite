@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-11-15
+
+Maintenance release with 1 change.
+
+- 🔹 feat([id]): add assignedPin, body and customerCreate `c09bdb6`
+  - `app/api/erp.config.ts`
+  - `app/composables/useErpApi.ts`
+  - `app/composables/useErpFormat.ts`
+  - `app/pages/erp/demand.vue`
+  - `app/pages/erp/index.vue`
+  - `app/pages/erp/purchases.vue`
+  - `app/pages/erp/routes.vue`
+  - `server/api/erp/activity/index.get.ts`
+  - `server/api/erp/customers/[id]/index.patch.ts`
+  - `server/api/erp/customers/index.get.ts`
+  - `server/api/erp/dashboard/summary.get.ts`
+  - `server/api/erp/demand/index.get.ts`
+  - `server/api/erp/purchases/orders/index.get.ts`
+  - `server/api/erp/routes/index.get.ts`
+  - `server/api/erp/sales/orders/index.get.ts`
+  - `server/api/erp/vendors/[id]/index.patch.ts`
+  - `server/api/erp/warehouse/items/[id]/adjust.post.ts`
+  - `server/api/erp/warehouse/items/[id]/index.patch.ts`
+  - `server/api/erp/warehouse/items/index.get.ts`
+  - `server/api/exports/leave.xlsx.get.ts`
+  - `server/api/imports/employees.post.ts`
+  - `server/api/leave/balance.get.ts`
+  - `server/api/leave/calendar.get.ts`
+  - `server/api/leave/holidays.get.ts`
+  - `server/api/leave/overtime.ts`
+  - `server/api/leave/requests/[id]/cancel.post.ts`
+  - `server/api/leave/requests/[id]/decision.post.ts`
+  - `server/api/leave/requests/index.get.ts`
+  - `server/middleware/security.ts`
+  - `server/services/erp-demand.ts`
+  - `server/services/erp-purchasing.ts`
+  - `server/services/leave/accrual.ts`
+  - `server/utils/erp-schemas.ts`
+  - `server/utils/erp.ts`
+  - `tests/e2e/vacaciones.spec.ts`
+  - `tests/unit/erp-query.test.ts`
+  - `tests/unit/leave.test.ts`
+- 🚀 feat: update various files and directories with new content `3496da0`
+
 ## [0.2.0] - 2026-11-08
 
 Highlights: feat: update various files and directories with new content.
