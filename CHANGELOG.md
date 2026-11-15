@@ -7,6 +7,204 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.2] - 2026-11-15
+
+Highlights: feat(i18n): locale-prefixed routes and translated shell and fix(ui): restore hydration so sidebar, user menu and every button work, plus 12 more changes.
+
+- 🚀 feat(i18n): locale-prefixed routes and translated shell `1b90395`
+  - `app/components/AppSidebar.vue`
+  - `app/components/AppUserMenu.vue`
+  - `app/components/ModulePlaceholder.vue`
+  - `app/composables/useI18nLite.ts`
+  - `app/composables/usePreferences.ts`
+  - `app/layouts/default.vue`
+  - `app/middleware/auth.global.ts`
+  - `app/pages/asistente.vue`
+  - `app/pages/cuenta.vue`
+  - `app/pages/denuncias/index.vue`
+  - `app/pages/empleados/index.vue`
+  - `app/pages/fichaje/index.vue`
+  - `app/pages/forgot-password.vue`
+  - `app/pages/gastos/index.vue`
+  - `app/pages/herramientas.vue`
+  - `app/pages/index.vue`
+  - `app/pages/nominas/index.vue`
+  - `app/pages/reclutamiento/index.vue`
+  - `app/pages/reset-password.vue`
+  - `app/pages/signin.vue`
+  - `app/pages/signup.vue`
+  - `app/pages/turnos/index.vue`
+  - `app/pages/vacaciones/aprobaciones.vue`
+  - `app/pages/vacaciones/index.vue`
+  - `app/pages/verify-email.vue`
+  - `i18n/locales/ca.json`
+  - `i18n/locales/en.json`
+  - `i18n/locales/es.json`
+  - `nuxt.config.ts`
+  - `package.json`
+- 🔹 fix(auth,ai): keep the entry page reachable and give the agent full CRUD per section `4f3fa46`
+  - `app/components/AiActionButton.vue`
+  - `app/components/AiChatPanel.vue`
+  - `app/components/AppAiLauncher.vue`
+  - `app/composables/useAssistant.ts`
+  - `app/middleware/auth.global.ts`
+  - `app/pages/denuncias/index.vue`
+  - `app/pages/empleados/index.vue`
+  - `app/pages/fichaje/index.vue`
+  - `app/pages/gastos/index.vue`
+  - `app/pages/nominas/index.vue`
+  - `app/pages/reclutamiento/index.vue`
+  - `app/pages/signin.vue`
+  - `app/pages/turnos/index.vue`
+  - `app/pages/vacaciones/index.vue`
+  - `package.json`
+  - `server/api/ai/agent.post.ts`
+  - `server/services/ai/agent.ts`
+  - `server/services/ai/tools.ts`
+- 🚀 feat(ai): floating assistant button on every page `10dac15`
+  - `app/components/AiChatPanel.vue`
+  - `app/components/AppAiLauncher.vue`
+  - `app/composables/useAiStatus.ts`
+  - `app/layouts/default.vue`
+  - `app/pages/asistente.vue`
+- 🚀 feat(ai): content agent powered by FreeLLMAPI `0a079f6`
+  - `.env.example`
+  - `README.md`
+  - `app/composables/useI18nLite.ts`
+  - `app/layouts/default.vue`
+  - `app/pages/asistente.vue`
+  - `app/pages/index.vue`
+  - `server/api/ai/agent.post.ts`
+  - `server/api/ai/status.get.ts`
+  - `server/api/content/index.get.ts`
+  - `server/database/migrations/0005_public_wallow.sql`
+  - `server/database/migrations/meta/0005_snapshot.json`
+  - `server/database/migrations/meta/_journal.json`
+  - `server/database/schema.ts`
+  - `server/services/ai/agent.ts`
+  - `server/services/ai/client.ts`
+  - `server/services/ai/tools.ts`
+- 🔹 feat(vacaciones,ui): week-block requests and touch-friendly controls `0aa79b7`
+  - `app/assets/css/main.css`
+  - `app/layouts/default.vue`
+  - `app/pages/fichaje/index.vue`
+  - `app/pages/index.vue`
+  - `app/pages/vacaciones/index.vue`
+  - `server/services/settings.ts`
+- 🚀 feat(turnos): implement weekly shift planning `1ad0fb1`
+  - `app/layouts/default.vue`
+  - `app/pages/turnos/index.vue`
+  - `server/api/shifts/assignments/[id]/index.delete.ts`
+  - `server/api/shifts/assignments/index.get.ts`
+  - `server/api/shifts/assignments/index.post.ts`
+  - `server/api/shifts/patterns/[id]/index.delete.ts`
+  - `server/api/shifts/patterns/index.get.ts`
+  - `server/api/shifts/patterns/index.post.ts`
+- 🚀 feat(modules): implement gastos, nominas, reclutamiento and denuncias `af72513`
+  - `app/components/StatusBadge.vue`
+  - `app/layouts/default.vue`
+  - `app/pages/denuncias/index.vue`
+  - `app/pages/gastos/index.vue`
+  - `app/pages/nominas/index.vue`
+  - `app/pages/reclutamiento/index.vue`
+  - `server/api/expenses/[id]/decision.post.ts`
+  - `server/api/expenses/[id]/submit.post.ts`
+  - `server/api/expenses/index.get.ts`
+  - `server/api/expenses/index.post.ts`
+  - `server/api/payroll/payslips/index.get.ts`
+  - `server/api/payroll/payslips/index.post.ts`
+  - `server/api/payroll/periods/[id]/close.post.ts`
+  - `server/api/payroll/periods/index.get.ts`
+  - `server/api/payroll/periods/index.post.ts`
+  - `server/api/recruitment/candidates/[id].patch.ts`
+  - `server/api/recruitment/candidates/index.get.ts`
+  - `server/api/recruitment/candidates/index.post.ts`
+  - `server/api/recruitment/jobs/[id].patch.ts`
+  - `server/api/recruitment/jobs/index.get.ts`
+  - `server/api/recruitment/jobs/index.post.ts`
+  - `server/api/whistle/[id].patch.ts`
+  - `server/api/whistle/index.get.ts`
+  - `server/api/whistle/index.post.ts`
+  - `server/api/whistle/track.get.ts`
+  - `server/api/whistle/track.post.ts`
+- 🐛 fix(ui): restore hydration so sidebar, user menu and every button work `4adcb8a`
+  - `nuxt.config.ts`
+  - `server/middleware/security.ts`
+  - `server/plugins/csp-nonce.ts`
+- 📝 docs: document Cloudflare Pages deploy and storage env vars `0c8fd76`
+  - `.env.example`
+  - `README.md`
+- 🧹 chore: remove dead files from Neon dashboard integration and rotate leaked credential `7c2f6d4`
+  - `.gitignore`
+  - `README.md`
+  - `docker-compose.dev.yml`
+  - `docker-compose.yml`
+  - `hello.ts`
+  - `neon.ts`
+  - `src/lib/neon.ts`
+- 🚀 feat: Neon serverless DB driver, Cloudflare Pages build and Neon Storage (S3) `ab5a58d`
+  - `.gitignore`
+  - `package.json`
+  - `server/database/client-pg.ts`
+  - `server/database/client.ts`
+  - `server/database/migrate.ts`
+  - `server/database/reset.ts`
+  - `server/database/seed.ts`
+  - `server/utils/storage.ts`
+  - `wrangler.jsonc`
+- 🤖 ci(neon): add pull-request preview branch workflow `3c1c81e`
+  - `.github/workflows/neon-preview-branch.yml`
+- 🚀 feat: white-label branding, responsive shell, one-jornada attendance and security hardening `d33a7ae`
+  - `.env.example`
+  - `README.md`
+  - `app/assets/css/main.css`
+  - `app/components/AppSidebar.vue`
+  - `app/components/AppUserMenu.vue`
+  - `app/components/AuthShell.vue`
+  - `app/composables/useI18nLite.ts`
+  - `app/composables/usePreferences.ts`
+  - `app/composables/useSession.ts`
+  - `app/layouts/default.vue`
+  - `app/pages/ajustes.vue`
+  - `app/pages/fichaje/index.vue`
+  - `app/pages/signin.vue`
+  - `app/types/attendance.ts`
+  - `nuxt.config.ts`
+  - `package.json`
+  - `public/branding/fundacio-onada.png`
+  - `public/logo_onada_transparent.png`
+  - `public/manifest.webmanifest`
+  - `server/api/attendance/clock.post.ts`
+  - `server/api/attendance/correction.post.ts`
+  - `server/api/attendance/credit.post.ts`
+  - `server/api/exports/leave.xlsx.get.ts`
+  - `server/api/imports/employees.post.ts`
+  - `server/api/leave/overtime.ts`
+  - `server/api/leave/requests/[id]/cancel.post.ts`
+  - `server/api/leave/requests/[id]/decision.post.ts`
+  - `server/api/leave/requests/index.post.ts`
+  - `server/api/me.get.ts`
+  - `server/api/settings.ts`
+  - `server/database/migrations/0004_add_audit_ip_useragent.sql`
+  - `server/database/migrations/meta/0004_snapshot.json`
+  - `server/database/migrations/meta/_journal.json`
+  - `server/database/schema.ts`
+  - `server/database/seed.ts`
+  - `server/middleware/security.ts`
+  - `server/services/attendance/sessions.ts`
+  - `server/services/organization.ts`
+  - `server/services/settings.ts`
+  - `server/utils/attendance.ts`
+  - `server/utils/audit.ts`
+  - `server/utils/auth.ts`
+  - `server/utils/session.ts`
+  - `tests/e2e/vacaciones.spec.ts`
+- 📦 build(bun.lock): add @aws-sdk/client-s3, @aws-sdk/s3-request-presigner, better-auth and core-js to package.json `cfa1790`
+  - `bun.lock`
+  - `package-lock.json`
+  - `package.json`
+  - `pnpm-lock.yaml`
+
 ## [0.2.1] - 2026-11-15
 
 Maintenance release with 1 change.
