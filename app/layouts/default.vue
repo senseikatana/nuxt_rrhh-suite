@@ -53,10 +53,10 @@ const sections = computed<NavSection[]>(() => [
   {
     title: t('secGestion'),
     items: [
-      { label: t('gastos'), to: '/gastos', icon: 'i-lucide-receipt', phase: 'F3' },
-      { label: t('nominas'), to: '/nominas', icon: 'i-lucide-banknote', phase: 'F3' },
-      { label: t('reclutamiento'), to: '/reclutamiento', icon: 'i-lucide-user-plus', phase: 'F4' },
-      { label: t('denuncias'), to: '/denuncias', icon: 'i-lucide-shield-check', phase: 'F4' },
+      { label: t('gastos'), to: '/gastos', icon: 'i-lucide-receipt' },
+      { label: t('nominas'), to: '/nominas', icon: 'i-lucide-banknote' },
+      { label: t('reclutamiento'), to: '/reclutamiento', icon: 'i-lucide-user-plus' },
+      { label: t('denuncias'), to: '/denuncias', icon: 'i-lucide-shield-check' },
     ],
   },
   // Sección ERP: visible solo para quien tiene un rol ERP (grant en
