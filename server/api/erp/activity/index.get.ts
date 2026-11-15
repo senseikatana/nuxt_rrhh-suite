@@ -1,6 +1,6 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import * as schema from '../../../database/schema'
-import { getErpContext } from '../../../utils/erp'
+import { getErpContext, intQuery } from '../../../utils/erp'
 
 /**
  * Log de actividad más reciente, de más nuevo a más antiguo.
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const { db, orgId } = await getErpContext(event)
 
   const query = getQuery(event)
-  const limit = Math.min(Math.max(Number(query.limit ?? 20), 1), 200)
+  const limit = intQuery(query.limit, 20, 1, 200)
 
   const where = eq(schema.erpActivityEvents.orgId, orgId)
 

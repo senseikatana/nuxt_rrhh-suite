@@ -200,12 +200,27 @@ export async function receive(
   }
   assertAllowed('RECEIVED', actor.role)
 
+  const lineById = new Map(lines.map((line) => [line.id, line]))
   const requested = new Map<string, string>()
   for (const l of payload.lines ?? []) {
+    const line = lineById.get(l.lineId)
+    if (!line) {
+      throw new WorkflowError(`Line '${l.lineId}' does not belong to this order`)
+    }
+    if (l.quantityReceived > Number(line.quantity)) {
+      throw new WorkflowError(
+        `Line '${line.id}': received quantity cannot exceed the ordered quantity`,
+      )
+    }
     requested.set(l.lineId, Number(l.quantityReceived).toFixed(3))
   }
 
-  for (const line of lines) {
+  // Recepción completa cuando no se especifican líneas; si se especifican, solo
+  // se tocan esas. Antes las líneas omitidas se reescribían con la cantidad
+  // pedida entera, lo que publicaba stock de mercancía nunca recibida.
+  const targets = requested.size > 0 ? lines.filter((line) => requested.has(line.id)) : lines
+
+  for (const line of targets) {
     const quantity = requested.get(line.id) ?? line.quantity
     await tx
       .update(schema.erpPurchaseOrderLines)

@@ -1,5 +1,5 @@
-import { useFetch, type FetchResult } from 'katanakit-js'
-import '../api/erp.config'
+import { FetchApiManager, useFetch, type FetchResult } from 'katanakit-js'
+import { erpApiConfig } from '../api/erp.config'
 
 /**
  * Cliente de la capa ERP sobre katanakit-js.
@@ -20,6 +20,13 @@ import '../api/erp.config'
  */
 export function useErpApi() {
   const orgId = useState<string | null>('erp-active-org', () => null)
+
+  // katanakit exige un baseUri absoluto: resuelve el origin de esta petición
+  // (SSR: host de la request; cliente: window.location) y re-registra la API.
+  const origin = import.meta.server ? useRequestURL().origin : window.location.origin
+  FetchApiManager.getInstance().useInit({
+    erp: { ...erpApiConfig, baseUri: new URL(erpApiConfig.baseUri, origin).toString() },
+  })
 
   function request<T>(
     method: 'GET' | 'POST' | 'PATCH' | 'DELETE',

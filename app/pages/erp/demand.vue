@@ -119,8 +119,8 @@ async function regenerate() {
               </td>
               <td class="text-right tabular-nums">{{ number(line.quantityNeeded) }}</td>
               <td>{{ date(line.requiredDate) }}</td>
-              <td><erp-ErpStatusBadge :status="line.source" /></td>
-              <td><erp-ErpStatusBadge :status="line.action" /></td>
+              <td><ErpStatusBadge :status="line.source" /></td>
+              <td><ErpStatusBadge :status="line.action" /></td>
             </tr>
           </tbody>
         </table>

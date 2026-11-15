@@ -7,6 +7,10 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
 
   const year = Number(query.year ?? new Date().getFullYear())
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw createError({ statusCode: 400, statusMessage: 'Año inválido' })
+  }
+
   const departmentId = typeof query.departmentId === 'string' ? query.departmentId : null
   const scope = typeof query.scope === 'string' ? query.scope : 'all'
 

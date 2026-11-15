@@ -30,7 +30,7 @@ export default defineEventHandler((event) => {
   const origin = getRequestHeader(event, 'origin') || getRequestHeader(event, 'referer')
   if (!origin) return
 
-  let originHost: string | null = null
+  let originHost: string | null
   try {
     originHost = new URL(origin).host
   } catch {

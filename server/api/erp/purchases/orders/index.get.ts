@@ -1,17 +1,17 @@
-import { and, asc, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import * as schema from '../../../../database/schema'
-import { getErpContext } from '../../../../utils/erp'
+import { getErpContext, intQuery } from '../../../../utils/erp'
 
 /**
  * Listado de pedidos de compra con filtro opcional por estado.
- * Paginación limit/offset igual que el contrato original.
+ * Incluye proveedor y líneas para que la cola de calidad muestre el detalle.
  */
 export default defineEventHandler(async (event) => {
   const { db, orgId } = await getErpContext(event)
 
   const query = getQuery(event)
-  const limit = Math.min(Math.max(Number(query.limit ?? 50), 1), 500)
-  const offset = Math.max(Number(query.offset ?? 0), 0)
+  const limit = intQuery(query.limit, 50, 1, 500)
+  const offset = intQuery(query.offset, 0, 0, 100_000)
 
   // Validar el filtro contra los valores del enum: un valor fuera de él llega a
   // `inArray` y Postgres revienta con un 500 en vez de un 400 claro.
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     .from(schema.erpPurchaseOrders)
     .where(where)
 
-  const items = await db
+  const orders = await db
     .select()
     .from(schema.erpPurchaseOrders)
     .where(where)
@@ -43,8 +43,43 @@ export default defineEventHandler(async (event) => {
     .limit(limit)
     .offset(offset)
 
+  const orderIds = orders.map((order) => order.id)
+  const vendorIds = [...new Set(orders.map((order) => order.vendorId))]
+
+  const lines = orderIds.length
+    ? await db
+        .select({
+          id: schema.erpPurchaseOrderLines.id,
+          orderId: schema.erpPurchaseOrderLines.orderId,
+          itemId: schema.erpPurchaseOrderLines.itemId,
+          quantity: schema.erpPurchaseOrderLines.quantity,
+          unitCost: schema.erpPurchaseOrderLines.unitCost,
+          qtyReceived: schema.erpPurchaseOrderLines.qtyReceived,
+          qcStatus: schema.erpPurchaseOrderLines.qcStatus,
+          stockPosted: schema.erpPurchaseOrderLines.stockPosted,
+          item_code: schema.erpItems.code,
+          item_description: schema.erpItems.description,
+        })
+        .from(schema.erpPurchaseOrderLines)
+        .leftJoin(schema.erpItems, eq(schema.erpPurchaseOrderLines.itemId, schema.erpItems.id))
+        .where(inArray(schema.erpPurchaseOrderLines.orderId, orderIds))
+    : []
+
+  const vendors = vendorIds.length
+    ? await db
+        .select({ id: schema.erpVendors.id, name: schema.erpVendors.name })
+        .from(schema.erpVendors)
+        .where(and(inArray(schema.erpVendors.id, vendorIds), eq(schema.erpVendors.orgId, orgId)))
+    : []
+
+  const vendorNames = new Map(vendors.map((vendor) => [vendor.id, vendor.name]))
+
   return {
-    items,
+    items: orders.map((order) => ({
+      ...order,
+      vendor_name: vendorNames.get(order.vendorId) ?? null,
+      lines: lines.filter((line) => line.orderId === order.id),
+    })),
     meta: { total: countRow?.total ?? 0, limit, offset },
   }
 })

@@ -13,6 +13,9 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
 
   const year = Number(query.year ?? new Date().getFullYear())
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw createError({ statusCode: 400, statusMessage: 'Año inválido' })
+  }
   const targetId = typeof query.employeeId === 'string' ? query.employeeId : null
 
   if (targetId && targetId !== employee?.id && !isManagerOrAdmin(user.role)) {
@@ -29,7 +32,7 @@ export default defineEventHandler(async (event) => {
     const [row] = await db
       .select()
       .from(schema.employees)
-      .where(eq(schema.employees.id, targetId))
+      .where(and(eq(schema.employees.id, targetId), eq(schema.employees.orgId, org.id)))
       .limit(1)
 
     if (!row) {

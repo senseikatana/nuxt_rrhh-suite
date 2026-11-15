@@ -1,6 +1,6 @@
 import { and, asc, eq, lt, or, sql, type SQL } from 'drizzle-orm'
 import * as schema from '../../../../database/schema'
-import { getErpContext } from '../../../../utils/erp'
+import { getErpContext, intQuery, stringQuery } from '../../../../utils/erp'
 
 /**
  * Listado de artículos de inventario con filtros opcionales:
@@ -10,11 +10,11 @@ export default defineEventHandler(async (event) => {
   const { db, orgId } = await getErpContext(event)
 
   const query = getQuery(event)
-  const limit = Math.min(Math.max(Number(query.limit ?? 50), 1), 500)
-  const offset = Math.max(Number(query.offset ?? 0), 0)
-  const search = (query.search as string | undefined)?.trim()
+  const limit = intQuery(query.limit, 50, 1, 500)
+  const offset = intQuery(query.offset, 0, 0, 100_000)
+  const search = stringQuery(query.search)
   const belowMinimum = query.below_minimum === 'true' || query.below_minimum === true
-  const location = (query.location as string | undefined)?.trim()
+  const location = stringQuery(query.location)
 
   const conditions: SQL[] = [eq(schema.erpItems.orgId, orgId)]
   if (search) {

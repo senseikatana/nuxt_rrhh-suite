@@ -97,13 +97,21 @@ export default defineEventHandler(async (event) => {
     const position = valueAt(row, headers, 'Puesto')
     const startDateRaw = valueAt(row, headers, 'Fecha alta')
     const startDate = isValidIsoDate(startDateRaw) ? startDateRaw : `${year}-01-01`
-    const weeklyHours = Number(valueAt(row, headers, 'Horas/semana') || 40) || 40
+    const weeklyHoursRaw = Number(valueAt(row, headers, 'Horas/semana') || 40)
+    const weeklyHours =
+      Number.isFinite(weeklyHoursRaw) && weeklyHoursRaw > 0 && weeklyHoursRaw <= 168
+        ? weeklyHoursRaw
+        : 40
     const scheduleStartRaw = valueAt(row, headers, 'Hora entrada')
     const scheduleEndRaw = valueAt(row, headers, 'Hora salida')
     const hasSchedule = isValidTime(scheduleStartRaw) && isValidTime(scheduleEndRaw)
     const scheduleStart = hasSchedule ? scheduleStartRaw : null
     const scheduleEnd = hasSchedule ? scheduleEndRaw : null
-    const pin = valueAt(row, headers, 'PIN') || null
+    const pinRaw = valueAt(row, headers, 'PIN')
+    const pin = /^\d{4,6}$/.test(pinRaw) ? pinRaw : null
+    if (pinRaw && !pin) {
+      result.errors.push(`Fila ${rowNumber}: el PIN debe tener entre 4 y 6 dígitos.`)
+    }
     const available = Number(valueAt(row, headers, 'Vacaciones disponibles') || '')
 
     let departmentId: string | null = null
@@ -140,6 +148,23 @@ export default defineEventHandler(async (event) => {
 
     let employeeId: string
 
+    // El PIN es único a nivel global: si pertenece a otra ficha, se conserva el
+    // existente y se anota el error en vez de reventar la importación entera.
+    let assignedPin = pin
+    if (pin) {
+      const [pinOwner] = await db
+        .select({ id: schema.employees.id })
+        .from(schema.employees)
+        .where(eq(schema.employees.pin, pin))
+        .limit(1)
+      if (pinOwner && pinOwner.id !== existing?.id) {
+        result.errors.push(
+          `Fila ${rowNumber}: el PIN ${pin} ya está asignado a otra ficha; se conserva el anterior.`,
+        )
+        assignedPin = null
+      }
+    }
+
     if (existing) {
       employeeId = existing.id
       await db
@@ -153,7 +178,7 @@ export default defineEventHandler(async (event) => {
             startDateRaw && isValidIsoDate(startDateRaw) ? startDateRaw : existing.startDate,
           weeklyHours,
           ...(hasSchedule ? { scheduleStart, scheduleEnd } : {}),
-          pin: pin ?? existing.pin,
+          pin: assignedPin ?? existing.pin,
           updatedAt: now,
         })
         .where(eq(schema.employees.id, existing.id))
@@ -168,7 +193,7 @@ export default defineEventHandler(async (event) => {
         lastName,
         email,
         phone: null,
-        pin,
+        pin: assignedPin,
         position: position || null,
         startDate,
         weeklyHours,

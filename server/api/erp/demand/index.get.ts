@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import * as schema from '../../../database/schema'
-import { getErpContext } from '../../../utils/erp'
+import { getErpContext, intQuery } from '../../../utils/erp'
 
 /**
  * Listado de la hoja de demanda, con filtro opcional por acción.
@@ -9,8 +9,8 @@ export default defineEventHandler(async (event) => {
   const { db, orgId } = await getErpContext(event)
 
   const query = getQuery(event)
-  const limit = Math.min(Math.max(Number(query.limit ?? 100), 1), 500)
-  const offset = Math.max(Number(query.offset ?? 0), 0)
+  const limit = intQuery(query.limit, 100, 1, 500)
+  const offset = intQuery(query.offset, 0, 0, 100_000)
 
   // Validar el filtro contra los valores del enum: un valor fuera de él llega a
   // `inArray` y Postgres revienta con un 500 en vez de un 400 claro.

@@ -78,7 +78,7 @@ test('la administración ve y guarda los ajustes', async ({ page }) => {
   await expect(page.getByText('Devengo de vacaciones')).toBeVisible()
 
   await page.getByRole('button', { name: 'Guardar cambios' }).click()
-  await expect(page.getByText('Configuración guardada')).toBeVisible()
+  await expect(page.getByText('Configuración guardada', { exact: true })).toBeVisible()
 })
 
 test('un usuario nuevo puede registrarse', async ({ page }) => {

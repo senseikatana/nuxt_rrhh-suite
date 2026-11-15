@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import * as schema from '../../../../database/schema'
 import { canApprove, getContext } from '../../../../utils/hr'
@@ -22,10 +22,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Decisión inválida' })
   }
 
+  // El filtro por org es imprescindible: sin él un admin de otra empresa
+  // podría aprobar/rechazar la solicitud conociendo su UUID (IDOR).
   const [request] = await db
     .select()
     .from(schema.leaveRequests)
-    .where(eq(schema.leaveRequests.id, id))
+    .where(and(eq(schema.leaveRequests.id, id), eq(schema.leaveRequests.orgId, org.id)))
     .limit(1)
 
   if (!request) throw createError({ statusCode: 404, statusMessage: 'Solicitud no encontrada' })

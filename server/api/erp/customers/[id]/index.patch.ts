@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, ne } from 'drizzle-orm'
 import * as schema from '../../../../database/schema'
 import { getErpContext } from '../../../../utils/erp'
+import { customerUpdate, parseOrThrow } from '../../../../utils/erp-schemas'
 
 /**
  * Actualización de datos maestros de un cliente.
@@ -17,7 +18,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const customerId = getRouterParam(event, 'id')
-  const body = await readBody(event)
+  const body = parseOrThrow(customerUpdate, await readBody(event), 'Invalid customer')
 
   const [customer] = await db
     .select()
@@ -27,15 +28,26 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Customer not found' })
   }
 
-  const allowed = ['code', 'name', 'email', 'phone', 'address', 'city', 'postalCode', 'country', 'taxId'] as const
-  const patch: Record<string, unknown> = {}
-  for (const field of allowed) {
-    if (body && field in body) patch[field] = body[field]
+  if (body.code) {
+    const [duplicate] = await db
+      .select({ id: schema.erpCustomers.id })
+      .from(schema.erpCustomers)
+      .where(
+        and(
+          eq(schema.erpCustomers.orgId, orgId),
+          eq(schema.erpCustomers.code, body.code),
+          ne(schema.erpCustomers.id, customer.id),
+        ),
+      )
+      .limit(1)
+    if (duplicate) {
+      throw createError({ statusCode: 409, statusMessage: `Customer code '${body.code}' already exists` })
+    }
   }
 
   const [updated] = await db
     .update(schema.erpCustomers)
-    .set({ ...patch, updatedAt: new Date() })
+    .set({ ...body, updatedAt: new Date() })
     .where(eq(schema.erpCustomers.id, customer.id))
     .returning()
 

@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, ne } from 'drizzle-orm'
 import * as schema from '../../../../database/schema'
 import { getErpContext } from '../../../../utils/erp'
+import { parseOrThrow, vendorUpdate } from '../../../../utils/erp-schemas'
 
 /**
  * Actualización de datos maestros de un proveedor. Solo admin y compras.
@@ -16,22 +17,33 @@ export default defineEventHandler(async (event) => {
   }
 
   const vendorId = getRouterParam(event, 'id')
-  const body = await readBody(event)
+  const body = parseOrThrow(vendorUpdate, await readBody(event), 'Invalid vendor')
 
   const [vendor] = await db.select().from(schema.erpVendors).where(eq(schema.erpVendors.id, vendorId!))
   if (!vendor || vendor.orgId !== orgId) {
     throw createError({ statusCode: 404, statusMessage: 'Vendor not found' })
   }
 
-  const allowed = ['code', 'name', 'email', 'phone', 'leadTimeDays', 'qualityRating'] as const
-  const patch: Record<string, unknown> = {}
-  for (const field of allowed) {
-    if (body && field in body) patch[field] = body[field]
+  if (body.code) {
+    const [duplicate] = await db
+      .select({ id: schema.erpVendors.id })
+      .from(schema.erpVendors)
+      .where(
+        and(
+          eq(schema.erpVendors.orgId, orgId),
+          eq(schema.erpVendors.code, body.code),
+          ne(schema.erpVendors.id, vendor.id),
+        ),
+      )
+      .limit(1)
+    if (duplicate) {
+      throw createError({ statusCode: 409, statusMessage: `Vendor code '${body.code}' already exists` })
+    }
   }
 
   const [updated] = await db
     .update(schema.erpVendors)
-    .set({ ...patch, updatedAt: new Date() })
+    .set({ ...body, updatedAt: new Date() })
     .where(eq(schema.erpVendors.id, vendor.id))
     .returning()
 

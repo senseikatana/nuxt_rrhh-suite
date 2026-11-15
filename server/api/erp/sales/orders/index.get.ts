@@ -1,17 +1,18 @@
 import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import * as schema from '../../../../database/schema'
-import { getErpContext } from '../../../../utils/erp'
+import { getErpContext, intQuery } from '../../../../utils/erp'
 
 /**
  * Listado de pedidos de venta, con filtro opcional por estado.
- * Paginación limit/offset igual que el contrato original.
+ * Incluye el nombre del cliente y las líneas para que el listado no tenga que
+ * mostrar UUIDs ni pedir el detalle de cada pedido.
  */
 export default defineEventHandler(async (event) => {
   const { db, orgId } = await getErpContext(event)
 
   const query = getQuery(event)
-  const limit = Math.min(Math.max(Number(query.limit ?? 50), 1), 500)
-  const offset = Math.max(Number(query.offset ?? 0), 0)
+  const limit = intQuery(query.limit, 50, 1, 500)
+  const offset = intQuery(query.offset, 0, 0, 100_000)
 
   // Validar el filtro contra los valores del enum: un valor fuera de él llega a
   // `inArray` y Postgres revienta con un 500 en vez de un 400 claro.
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
     .from(schema.erpSalesOrders)
     .where(where)
 
-  const items = await db
+  const orders = await db
     .select()
     .from(schema.erpSalesOrders)
     .where(where)
@@ -43,8 +44,42 @@ export default defineEventHandler(async (event) => {
     .limit(limit)
     .offset(offset)
 
+  const orderIds = orders.map((order) => order.id)
+  const customerIds = [...new Set(orders.map((order) => order.customerId))]
+
+  const lines = orderIds.length
+    ? await db
+        .select({
+          id: schema.erpSalesOrderLines.id,
+          orderId: schema.erpSalesOrderLines.orderId,
+          itemId: schema.erpSalesOrderLines.itemId,
+          quantity: schema.erpSalesOrderLines.quantity,
+          unitPrice: schema.erpSalesOrderLines.unitPrice,
+          qtyPicked: schema.erpSalesOrderLines.qtyPicked,
+          qtyShipped: schema.erpSalesOrderLines.qtyShipped,
+          item_code: schema.erpItems.code,
+          item_description: schema.erpItems.description,
+        })
+        .from(schema.erpSalesOrderLines)
+        .leftJoin(schema.erpItems, eq(schema.erpSalesOrderLines.itemId, schema.erpItems.id))
+        .where(inArray(schema.erpSalesOrderLines.orderId, orderIds))
+    : []
+
+  const customers = customerIds.length
+    ? await db
+        .select({ id: schema.erpCustomers.id, name: schema.erpCustomers.name })
+        .from(schema.erpCustomers)
+        .where(and(inArray(schema.erpCustomers.id, customerIds), eq(schema.erpCustomers.orgId, orgId)))
+    : []
+
+  const customerNames = new Map(customers.map((customer) => [customer.id, customer.name]))
+
   return {
-    items,
+    items: orders.map((order) => ({
+      ...order,
+      customer_name: customerNames.get(order.customerId) ?? null,
+      lines: lines.filter((line) => line.orderId === order.id),
+    })),
     meta: { total: countRow?.total ?? 0, limit, offset },
   }
 })

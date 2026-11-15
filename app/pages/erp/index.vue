@@ -1,17 +1,10 @@
 <script setup lang="ts">
-import type {
-  ActivityEvent,
-  Alert,
-  DashboardSummary,
-  DemandLine,
-  ErpRoute,
-  Item,
-} from '~/types/erp'
+import type { DashboardSummary } from '~/types/erp'
 
 definePageMeta({ layout: 'default' })
 
 const api = useErpApi()
-const { money, number, dateTime } = useErpFormat()
+const { money, number } = useErpFormat()
 
 const summary = ref<DashboardSummary | null>(null)
 const loading = ref(true)
@@ -31,12 +24,6 @@ async function load() {
 }
 
 onMounted(load)
-
-function stockRatio(item: { stock: string; minStock: string }): number {
-  const min = Number(item.minStock)
-  if (!min) return 100
-  return Math.min(100, Math.round((Number(item.stock) / min) * 100))
-}
 </script>
 
 <template>

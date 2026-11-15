@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 import * as schema from '../../../../../database/schema'
 import { getErpContext } from '../../../../../utils/erp'
+import { parseOrThrow, stockAdjust } from '../../../../../utils/erp-schemas'
 import { recordActivity } from '../../../../../services/erp-activity'
 
 /**
@@ -19,12 +20,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const itemId = getRouterParam(event, 'id')
-  const body = await readBody(event)
-
-  const quantity = Number(body?.quantity)
-  if (!Number.isFinite(quantity) || quantity === 0) {
-    throw createError({ statusCode: 400, statusMessage: 'quantity is required and must be non-zero' })
-  }
+  const body = parseOrThrow(stockAdjust, await readBody(event), 'Invalid stock adjustment')
+  const quantity = body.quantity
 
   const [item] = await db.select().from(schema.erpItems).where(eq(schema.erpItems.id, itemId!))
   if (!item || item.orgId !== orgId) {
@@ -67,7 +64,7 @@ export default defineEventHandler(async (event) => {
         previous: String(item.stock),
         new: String(row.stock),
         delta: String(quantity),
-        reason: body?.reason ?? null,
+        reason: body.reason,
       },
     })
 

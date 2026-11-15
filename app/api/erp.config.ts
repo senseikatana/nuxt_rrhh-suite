@@ -7,45 +7,47 @@ import { defineApiConfig } from 'katanakit-js'
  * cliente de katanakit-js devuelve siempre un `SafeResult` (`{ ok, data, error }`)
  * y nunca lanza en trabajo async, así el manejo de errores queda en el `if (ok)`.
  *
- * Los `:param` se rellenan desde `params` en cada llamada. El scoping por
- * organización viaja como query `org` (lo inyecta `useErpApi`).
+ * `baseUri` se declara relativa aquí, pero katanakit construye la URL con
+ * `new URL(base + path)`, que exige un origen absoluto. `useErpApi()` vuelve a
+ * registrar la config con el origin real de la petición; si se dejara relativa,
+ * todas las llamadas fallarían con "Failed to construct 'URL': Invalid URL".
  */
-export default defineApiConfig({
-  erp: {
-    baseUri: '/api/erp',
-    endpoints: {
-      // Dashboard
-      dashboardSummary: '/dashboard/summary',
+export const erpApiConfig = {
+  baseUri: '/api/erp',
+  endpoints: {
+    // Dashboard
+    dashboardSummary: '/dashboard/summary',
 
-      // Ventas
-      salesOrders: '/sales/orders',
-      salesOrder: '/sales/orders/:id',
-      salesOrderStatus: '/sales/orders/:id/status',
+    // Ventas
+    salesOrders: '/sales/orders',
+    salesOrder: '/sales/orders/:id',
+    salesOrderStatus: '/sales/orders/:id/status',
 
-      // Compras
-      purchaseOrders: '/purchases/orders',
-      purchaseOrder: '/purchases/orders/:id',
-      purchaseReceive: '/purchases/orders/:id/receive',
-      purchaseQuality: '/purchases/orders/:id/quality',
+    // Compras
+    purchaseOrders: '/purchases/orders',
+    purchaseOrder: '/purchases/orders/:id',
+    purchaseReceive: '/purchases/orders/:id/receive',
+    purchaseQuality: '/purchases/orders/:id/quality',
 
-      // Almacén
-      items: '/warehouse/items',
-      item: '/warehouse/items/:id',
-      itemAdjust: '/warehouse/items/:id/adjust',
+    // Almacén
+    items: '/warehouse/items',
+    item: '/warehouse/items/:id',
+    itemAdjust: '/warehouse/items/:id/adjust',
 
-      // Terceros
-      customers: '/customers',
-      customer: '/customers/:id',
-      vendors: '/vendors',
-      vendor: '/vendors/:id',
+    // Terceros
+    customers: '/customers',
+    customer: '/customers/:id',
+    vendors: '/vendors',
+    vendor: '/vendors/:id',
 
-      // Planificación
-      demand: '/demand',
-      demandGenerate: '/demand/generate',
-      routes: '/routes',
+    // Planificación
+    demand: '/demand',
+    demandGenerate: '/demand/generate',
+    routes: '/routes',
 
-      // Actividad
-      activity: '/activity',
-    },
+    // Actividad
+    activity: '/activity',
   },
-})
+}
+
+export default defineApiConfig({ erp: erpApiConfig })

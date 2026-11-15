@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, getDaysInYear, parseISO } from 'date-fns'
+import { differenceInCalendarDays, differenceInYears, getDaysInYear, parseISO } from 'date-fns'
 import { countLeaveDays, type LeaveDayOptions } from './working-days'
 
 export interface SeniorityRule {
@@ -54,7 +54,9 @@ export function seniorityBonus(
   const yearEnd = new Date(year, 11, 31)
   if (start > yearEnd) return 0
 
-  const fullYears = Math.floor(differenceInCalendarDays(yearEnd, start) / 365.25)
+  // Años completos cumplidos al cierre del ejercicio. Dividir días entre 365,25
+  // falla en los aniversarios que caen justo al final del año (365/365,25 < 1).
+  const fullYears = differenceInYears(yearEnd, start)
   const tiers = Math.floor(fullYears / rule.everyYears)
   const bonus = tiers * rule.extraDays
 

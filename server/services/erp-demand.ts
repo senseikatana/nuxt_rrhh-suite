@@ -33,7 +33,6 @@ export async function generate(
   const horizonEnd = new Date(today.getTime() + params.horizonDays * 86400000)
     .toISOString()
     .slice(0, 10)
-  const todayStr = today.toISOString().slice(0, 10)
 
   // --- Cantidad comprometida en pedidos de venta abiertos ---
   const openStatuses = ['OPEN', 'PICKING', 'SHIPPED'] as (typeof schema.erpSalesOrders.status.enumValues)[number][]

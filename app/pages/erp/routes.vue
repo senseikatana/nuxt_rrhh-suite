@@ -100,7 +100,7 @@ async function createRoute() {
               <td class="font-mono text-xs whitespace-nowrap">{{ route.code }}</td>
               <td>{{ route.carrier }}</td>
               <td>{{ date(route.date) }}</td>
-              <td><erp-ErpStatusBadge :status="route.status" /></td>
+              <td><ErpStatusBadge :status="route.status" /></td>
               <td class="text-right tabular-nums">{{ number(route.stops) }}</td>
             </tr>
           </tbody>

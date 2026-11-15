@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import * as schema from '../../../../database/schema'
 import { canApprove, getContext } from '../../../../utils/hr'
 import { recordAudit } from '../../../../utils/audit'
@@ -9,10 +9,11 @@ export default defineEventHandler(async (event) => {
 
   if (!id) throw createError({ statusCode: 400, statusMessage: 'Solicitud no indicada' })
 
+  // El filtro por org evita cancelar solicitudes de otra empresa por UUID.
   const [request] = await db
     .select()
     .from(schema.leaveRequests)
-    .where(eq(schema.leaveRequests.id, id))
+    .where(and(eq(schema.leaveRequests.id, id), eq(schema.leaveRequests.orgId, org.id)))
     .limit(1)
 
   if (!request) throw createError({ statusCode: 404, statusMessage: 'Solicitud no encontrada' })

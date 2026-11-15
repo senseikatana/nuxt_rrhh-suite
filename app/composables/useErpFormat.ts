@@ -9,10 +9,26 @@
 export function useErpFormat() {
   const session = useErpSession()
 
+  /**
+   * `Intl` espera un locale BCP 47 (`es-ES`), pero la base guarda `es_ES`.
+   * Sin normalizar, `Intl.NumberFormat('es_ES')` lanza RangeError y tumba
+   * cualquier página que formatee dinero. Si el valor no es válido, se cae
+   * a es-ES en vez de romper el render.
+   */
+  function normalizeLocale(value?: string | null): string {
+    const normalized = (value ?? '').replace(/_/g, '-').trim()
+    if (!normalized) return 'es-ES'
+    try {
+      return Intl.getCanonicalLocales(normalized)[0] ?? 'es-ES'
+    } catch {
+      return 'es-ES'
+    }
+  }
+
   /** Moneda de la organización activa (EUR por defecto). */
   const currency = computed(() => session.company.value?.currency ?? 'EUR')
   /** Locale de la organización activa (es-ES por defecto). */
-  const locale = computed(() => session.company.value?.locale ?? 'es-ES')
+  const locale = computed(() => normalizeLocale(session.company.value?.locale))
 
   /** Dinero con símbolo de moneda y 2 decimales. */
   function money(value: number | string | null | undefined): string {

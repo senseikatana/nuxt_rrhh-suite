@@ -72,9 +72,10 @@ export async function getErpContext(event: H3Event) {
   const session = await requireUser(event)
   const db = useDb()
 
-  const requestedOrgId = getQuery(event).org as string | undefined
+  const requestedOrgIdRaw = getQuery(event).org
+  const requestedOrgId = typeof requestedOrgIdRaw === 'string' ? requestedOrgIdRaw.trim() : undefined
 
-  let orgId = requestedOrgId
+  let orgId = requestedOrgId || undefined
   if (!orgId) {
     const [grant] = await db
       .select()
@@ -99,4 +100,24 @@ export async function getErpContext(event: H3Event) {
     .limit(1)
 
   return { db, actor, org, orgId, user: session.user }
+}
+
+/**
+ * Parámetros de query de los listados ERP.
+ *
+ * `getQuery` devuelve `string | string[] | undefined`; pasar `Number(...)` de
+ * un valor no numérico produce `NaN` y Drizzle lo envía a `limit`, que Postgres
+ * rechaza con un 500. Estos helpers convierten cualquier entrada inválida en el
+ * valor por defecto y acotan el rango.
+ */
+export function intQuery(value: unknown, fallback: number, min: number, max: number): number {
+  const parsed = typeof value === 'string' || typeof value === 'number' ? Number(value) : NaN
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(Math.max(Math.trunc(parsed), min), max)
+}
+
+export function stringQuery(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed || undefined
 }

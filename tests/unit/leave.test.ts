@@ -148,6 +148,13 @@ describe('accrual', () => {
     expect(result.seniorityBonusDays).toBe(2)
     expect(result.totalDays).toBe(32)
   })
+
+  it('cuenta el aniversario que cae justo en el cierre del año', () => {
+    // 2020-12-31 -> 2021-12-31 son 365 días, pero es un año completo.
+    expect(
+      seniorityBonus(2021, '2020-12-31', { everyYears: 1, extraDays: 1 }),
+    ).toBe(1)
+  })
 })
 
 describe('balance', () => {

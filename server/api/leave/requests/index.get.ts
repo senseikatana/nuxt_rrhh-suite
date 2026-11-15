@@ -39,7 +39,9 @@ export default defineEventHandler(async (event) => {
   } else if (scope === 'team') {
     if (departmentId) {
       conditions.push(eq(schema.employees.departmentId, departmentId))
-    } else if (user.role === 'manager' && employee?.departmentId) {
+    } else if (user.role === 'manager') {
+      // Un mando sin departamento asignado no debe ver toda la empresa.
+      if (!employee?.departmentId) return []
       conditions.push(eq(schema.employees.departmentId, employee.departmentId))
     }
   }

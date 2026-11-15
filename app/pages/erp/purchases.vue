@@ -6,7 +6,7 @@ definePageMeta({ layout: 'default' })
 const api = useErpApi()
 const session = useErpSession()
 const { money, number, date } = useErpFormat()
-const { confirm, prompt } = useDialogs()
+const { prompt } = useDialogs()
 const toast = useToast()
 
 const tab = ref<'orders' | 'quality'>('orders')
@@ -130,7 +130,7 @@ async function decide(order: PurchaseOrder, passed: boolean) {
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <span class="font-mono text-sm font-semibold">{{ order.number }}</span>
-            <erp-ErpStatusBadge :status="order.status" />
+            <ErpStatusBadge :status="order.status" />
           </div>
           <span class="text-base font-semibold tabular-nums">{{ money(order.total) }}</span>
         </div>
@@ -170,7 +170,7 @@ async function decide(order: PurchaseOrder, passed: boolean) {
                 <td class="text-right tabular-nums">{{ number(line.quantity) }}</td>
                 <td class="text-right tabular-nums">{{ number(line.qtyReceived) }}</td>
                 <td class="text-right tabular-nums">{{ money(line.unitCost) }}</td>
-                <td><erp-ErpStatusBadge :status="line.qcStatus" /></td>
+                <td><ErpStatusBadge :status="line.qcStatus" /></td>
               </tr>
             </tbody>
           </table>
@@ -186,7 +186,12 @@ async function decide(order: PurchaseOrder, passed: boolean) {
             Recibir
           </button>
 
-          <template v-if="session.hasRole('admin', 'quality') && order.status === 'QC_PENDING'">
+          <template
+            v-if="
+              session.hasRole('admin', 'quality') &&
+              ['QC_PENDING', 'RECEIVED'].includes(order.status)
+            "
+          >
             <button class="btn btn-primary btn-sm" type="button" @click="decide(order, true)">
               Aprobar
             </button>

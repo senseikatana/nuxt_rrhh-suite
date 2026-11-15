@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import * as schema from '../../database/schema'
 import { getContext } from '../../utils/hr'
@@ -26,7 +26,15 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 403, statusMessage: 'Sin permisos' })
     }
 
-    return getOvertimeSummary(db, targetId, settings)
+    const [target] = await db
+      .select({ id: schema.employees.id })
+      .from(schema.employees)
+      .where(and(eq(schema.employees.id, targetId), eq(schema.employees.orgId, org.id)))
+      .limit(1)
+
+    if (!target) throw createError({ statusCode: 404, statusMessage: 'Empleado no encontrado' })
+
+    return getOvertimeSummary(db, target.id, settings)
   }
 
   if (!isManagerOrAdmin(user.role)) {
