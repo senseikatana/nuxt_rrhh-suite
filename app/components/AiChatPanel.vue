@@ -174,14 +174,14 @@ onMounted(() => {
       <div class="flex items-end gap-2">
         <textarea
           v-model="input"
-          rows="2"
+          rows="3"
           :disabled="!ready || sending"
           :placeholder="
             ready
               ? 'Ej.: cambia el aviso del dashboard…'
               : 'IA no configurada (falta AI_API_KEY)'
           "
-          class="flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-60"
+          class="max-h-40 min-h-11 flex-1 resize-y rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:opacity-60"
           @keydown="onKeydown"
         />
         <UButton

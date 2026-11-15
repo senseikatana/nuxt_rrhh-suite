@@ -15,10 +15,17 @@ import { z } from 'zod'
 import type { Db } from '../../database/client'
 import * as schema from '../../database/schema'
 import { countLeaveDays } from '../leave/working-days'
-import { endOfLocalDay, startOfLocalDay, zonedDateTime } from '../attendance/time'
+import {
+  endOfLocalDay,
+  localDateKey,
+  startOfLocalDay,
+  zonedDateTime,
+} from '../attendance/time'
 import { recordAudit } from '../../utils/audit'
-import { getHolidayDates } from '../../utils/leave'
-import { getSettingsForOrg } from '../../utils/hr'
+import { ensureExpenseCategories } from '../../utils/expense-categories'
+import { getHolidayDates, getBalanceForType } from '../../utils/leave'
+import { canApprove, getSettingsForOrg } from '../../utils/hr'
+import { flushEmails, queueEmail } from '../../utils/mailer'
 import type { Role } from '../../utils/session'
 import type { ToolSpec } from './client'
 
@@ -128,6 +135,61 @@ async function findJob(ctx: ToolContext, ref: { id?: string | null; title?: stri
     )
     .limit(1)
   if (!row) throw createError({ statusCode: 404, statusMessage: 'Oferta no encontrada' })
+  return row
+}
+
+/** Días laborables (o naturales) de un rango según la configuración de la empresa. */
+async function countDaysForOrg(ctx: ToolContext, startDate: string, endDate: string) {
+  const settings = await getSettingsForOrg(ctx.db, ctx.org.id)
+  const yearStart = Number(startDate.slice(0, 4))
+  const yearEnd = Number(endDate.slice(0, 4))
+  const holidays = [
+    ...new Set([
+      ...(await getHolidayDates(ctx.db, ctx.org.id, yearStart)),
+      ...(await getHolidayDates(ctx.db, ctx.org.id, yearEnd)),
+    ]),
+  ]
+  return countLeaveDays(startDate, endDate, {
+    mode: settings.vacationMode,
+    holidays,
+    workweek: settings.workweek,
+  })
+}
+
+/** Código de seguimiento legible: WD-XXXXXXXX (sin caracteres ambiguos). */
+function generateTrackingCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = new Uint8Array(8)
+  crypto.getRandomValues(bytes)
+  let code = ''
+  for (const byte of bytes) code += alphabet[byte % alphabet.length]
+  return `WD-${code}`
+}
+
+/** Busca una candidatura por email y, opcionalmente, por oferta. */
+async function findCandidate(
+  ctx: ToolContext,
+  ref: { email: string; jobTitle?: string | null },
+) {
+  const conditions = [
+    eq(schema.jobPostings.orgId, ctx.org.id),
+    sql`lower(${schema.candidates.email}) = lower(${ref.email})`,
+  ]
+  if (ref.jobTitle) {
+    conditions.push(sql`lower(${schema.jobPostings.title}) = lower(${ref.jobTitle})`)
+  }
+
+  const [row] = await ctx.db
+    .select({
+      id: schema.candidates.id,
+      name: schema.candidates.name,
+      stage: schema.candidates.stage,
+    })
+    .from(schema.candidates)
+    .innerJoin(schema.jobPostings, eq(schema.candidates.jobPostingId, schema.jobPostings.id))
+    .where(and(...conditions))
+    .limit(1)
+  if (!row) throw createError({ statusCode: 404, statusMessage: 'Candidatura no encontrada' })
   return row
 }
 
@@ -473,6 +535,62 @@ export const TOOLS: Record<string, ToolDefinition> = {
     },
   },
 
+  delete_employee: {
+    module: 'empleados',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_employee',
+        description:
+          'Da de baja a un empleado (borrado lógico: deja de estar activo y se fija fecha de fin). No borra el histórico.',
+        parameters: {
+          type: 'object',
+          properties: {
+            employeeEmail: { type: 'string' },
+            employeeId: { type: 'string' },
+            endDate: { type: 'string', description: 'Último día, YYYY-MM-DD (por defecto hoy)' },
+          },
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          employeeEmail: z.string().email().optional(),
+          employeeId: z.string().optional(),
+          endDate: ISO_DATE.optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const employee = await findEmployee(ctx, {
+        id: parsed.data.employeeId,
+        email: parsed.data.employeeEmail,
+      })
+      if (ctx.employee?.id === employee.id) {
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'No puedes darte de baja a ti mismo desde el asistente',
+        })
+      }
+      if (!employee.active) {
+        throw createError({ statusCode: 409, statusMessage: 'El empleado ya está de baja' })
+      }
+
+      const endDate = parsed.data.endDate ?? localDateKey(new Date(), ctx.org.timezone)
+      await ctx.db
+        .update(schema.employees)
+        .set({ active: false, endDate, updatedAt: new Date() })
+        .where(eq(schema.employees.id, employee.id))
+
+      return {
+        summary: `Baja de ${employee.firstName} ${employee.lastName} con fecha ${endDate}`,
+        data: { id: employee.id, active: false, endDate },
+      }
+    },
+  },
+
   list_departments: {
     module: 'empleados',
     mutate: false,
@@ -539,6 +657,112 @@ export const TOOLS: Record<string, ToolDefinition> = {
     },
   },
 
+  update_department: {
+    module: 'empleados',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'update_department',
+        description: 'Actualiza el nombre, color o cobertura mínima de un departamento.',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Nombre actual del departamento' },
+            newName: { type: 'string' },
+            color: { type: 'string', description: 'Color hex' },
+            minCoverage: { type: 'number', description: 'Personas mínimas trabajando' },
+          },
+          required: ['name'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          name: z.string().min(2).max(60),
+          newName: z.string().min(2).max(60).optional(),
+          color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+          minCoverage: z.number().int().min(0).max(100).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const department = await findDepartment(ctx, parsed.data.name)
+      if (!department) {
+        throw createError({ statusCode: 404, statusMessage: 'Departamento no encontrado' })
+      }
+
+      const patch: Partial<typeof schema.departments.$inferInsert> = {}
+      if (parsed.data.newName) patch.name = parsed.data.newName
+      if (parsed.data.color) patch.color = parsed.data.color
+      if (parsed.data.minCoverage !== undefined) patch.minCoverage = parsed.data.minCoverage
+      if (!Object.keys(patch).length) {
+        throw createError({ statusCode: 400, statusMessage: 'Nada que actualizar' })
+      }
+
+      if (patch.name && (await findDepartment(ctx, patch.name))) {
+        throw createError({ statusCode: 409, statusMessage: 'Ya existe un departamento con ese nombre' })
+      }
+
+      await ctx.db
+        .update(schema.departments)
+        .set(patch)
+        .where(eq(schema.departments.id, department.id))
+
+      return {
+        summary: `Departamento "${patch.name ?? department.name}" actualizado`,
+        data: { id: department.id, ...patch },
+      }
+    },
+  },
+
+  delete_department: {
+    module: 'empleados',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_department',
+        description:
+          'Elimina un departamento vacío. Si tiene empleados asignados, primero hay que reasignarlos.',
+        parameters: {
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z.object({ name: z.string().min(2).max(60) }).safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const department = await findDepartment(ctx, parsed.data.name)
+      if (!department) {
+        throw createError({ statusCode: 404, statusMessage: 'Departamento no encontrado' })
+      }
+
+      const [row] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(schema.employees)
+        .where(
+          and(
+            eq(schema.employees.orgId, ctx.org.id),
+            eq(schema.employees.departmentId, department.id),
+          ),
+        )
+      if ((row?.count ?? 0) > 0) {
+        throw createError({
+          statusCode: 409,
+          statusMessage: `El departamento tiene ${row?.count} empleado(s). Reasígnalos antes de borrarlo.`,
+        })
+      }
+
+      await ctx.db.delete(schema.departments).where(eq(schema.departments.id, department.id))
+      return { summary: `Departamento "${department.name}" eliminado` }
+    },
+  },
+
   /* ----------------------------- Fichaje ----------------------------- */
   list_clock_events: {
     module: 'fichaje',
@@ -577,6 +801,7 @@ export const TOOLS: Record<string, ToolDefinition> = {
 
       const rows = await ctx.db
         .select({
+          id: schema.clockEvents.id,
           employeeEmail: schema.employees.email,
           occurredAt: schema.clockEvents.occurredAt,
           direction: schema.clockEvents.direction,
@@ -643,6 +868,103 @@ export const TOOLS: Record<string, ToolDefinition> = {
       return {
         summary: `${parsed.data.direction === 'in' ? 'Entrada' : 'Salida'} de ${employee.firstName} el ${parsed.data.date} a las ${parsed.data.time}`,
       }
+    },
+  },
+
+  update_clock_event: {
+    module: 'fichaje',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'update_clock_event',
+        description:
+          'Corrige un fichaje existente (fecha, hora, sentido o nota). Usa list_clock_events para obtener el id.',
+        parameters: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Id del fichaje' },
+            date: { type: 'string', description: 'Nueva fecha YYYY-MM-DD (junto con time)' },
+            time: { type: 'string', description: 'Nueva hora HH:MM (junto con date)' },
+            direction: { type: 'string', enum: ['in', 'out'] },
+            note: { type: 'string', description: 'Motivo de la corrección' },
+          },
+          required: ['id'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          id: z.string().min(1),
+          date: ISO_DATE.optional(),
+          time: TIME.optional(),
+          direction: z.enum(['in', 'out']).optional(),
+          note: z.string().max(300).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      if (Boolean(parsed.data.date) !== Boolean(parsed.data.time)) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Indica "date" y "time" juntos para cambiar el momento del fichaje',
+        })
+      }
+      const changes =
+        parsed.data.date !== undefined ||
+        parsed.data.direction !== undefined ||
+        parsed.data.note !== undefined
+      if (!changes) {
+        throw createError({ statusCode: 400, statusMessage: 'Nada que actualizar' })
+      }
+
+      const [event] = await ctx.db
+        .select()
+        .from(schema.clockEvents)
+        .where(and(eq(schema.clockEvents.id, parsed.data.id), eq(schema.clockEvents.orgId, ctx.org.id)))
+        .limit(1)
+      if (!event) throw createError({ statusCode: 404, statusMessage: 'Fichaje no encontrado' })
+
+      const patch: Partial<typeof schema.clockEvents.$inferInsert> = { corrected: true }
+      if (parsed.data.date && parsed.data.time) {
+        patch.occurredAt = zonedDateTime(parsed.data.date, parsed.data.time, ctx.org.timezone)
+      }
+      if (parsed.data.direction) patch.direction = parsed.data.direction
+      if (parsed.data.note !== undefined) patch.note = parsed.data.note
+
+      await ctx.db.update(schema.clockEvents).set(patch).where(eq(schema.clockEvents.id, event.id))
+      return { summary: `Fichaje ${event.id} corregido`, data: { id: event.id, ...patch } }
+    },
+  },
+
+  delete_clock_event: {
+    module: 'fichaje',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_clock_event',
+        description: 'Elimina un fichaje erróneo. Usa list_clock_events para obtener el id.',
+        parameters: {
+          type: 'object',
+          properties: { id: { type: 'string' } },
+          required: ['id'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z.object({ id: z.string().min(1) }).safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const deleted = await ctx.db
+        .delete(schema.clockEvents)
+        .where(and(eq(schema.clockEvents.id, parsed.data.id), eq(schema.clockEvents.orgId, ctx.org.id)))
+        .returning({ id: schema.clockEvents.id })
+      if (!deleted.length) {
+        throw createError({ statusCode: 404, statusMessage: 'Fichaje no encontrado' })
+      }
+      return { summary: `Fichaje ${parsed.data.id} eliminado` }
     },
   },
 
@@ -715,6 +1037,72 @@ export const TOOLS: Record<string, ToolDefinition> = {
         departmentId: null,
       })
       return { summary: `Turno "${parsed.data.name}" creado`, data: { id } }
+    },
+  },
+
+  update_shift_pattern: {
+    module: 'turnos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'update_shift_pattern',
+        description: 'Actualiza nombre, horario o color de un turno existente.',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Nombre actual del turno' },
+            newName: { type: 'string' },
+            startTime: { type: 'string', description: 'HH:MM' },
+            endTime: { type: 'string', description: 'HH:MM' },
+            color: { type: 'string', description: 'Color hex' },
+          },
+          required: ['name'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          name: z.string().min(2).max(40),
+          newName: z.string().min(2).max(40).optional(),
+          startTime: TIME.optional(),
+          endTime: TIME.optional(),
+          color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [pattern] = await ctx.db
+        .select()
+        .from(schema.shiftPatterns)
+        .where(
+          and(
+            eq(schema.shiftPatterns.orgId, ctx.org.id),
+            sql`lower(${schema.shiftPatterns.name}) = lower(${parsed.data.name})`,
+          ),
+        )
+        .limit(1)
+      if (!pattern) throw createError({ statusCode: 404, statusMessage: 'Turno no encontrado' })
+
+      const patch: Partial<typeof schema.shiftPatterns.$inferInsert> = {}
+      if (parsed.data.newName) patch.name = parsed.data.newName
+      if (parsed.data.startTime) patch.startTime = parsed.data.startTime
+      if (parsed.data.endTime) patch.endTime = parsed.data.endTime
+      if (parsed.data.color) patch.color = parsed.data.color
+      if (!Object.keys(patch).length) {
+        throw createError({ statusCode: 400, statusMessage: 'Nada que actualizar' })
+      }
+
+      await ctx.db
+        .update(schema.shiftPatterns)
+        .set(patch)
+        .where(eq(schema.shiftPatterns.id, pattern.id))
+
+      return {
+        summary: `Turno "${patch.name ?? pattern.name}" actualizado`,
+        data: { id: pattern.id, ...patch },
+      }
     },
   },
 
@@ -880,6 +1268,106 @@ export const TOOLS: Record<string, ToolDefinition> = {
     },
   },
 
+  update_shift_assignment: {
+    module: 'turnos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'update_shift_assignment',
+        description:
+          'Cambia el turno, el horario o las notas de una asignación ya existente.',
+        parameters: {
+          type: 'object',
+          properties: {
+            employeeEmail: { type: 'string' },
+            date: { type: 'string', description: 'YYYY-MM-DD' },
+            patternName: { type: 'string', description: 'Nuevo turno' },
+            startTime: { type: 'string', description: 'Hora de inicio HH:MM (sin turno)' },
+            endTime: { type: 'string', description: 'Hora de fin HH:MM (sin turno)' },
+            notes: { type: 'string' },
+          },
+          required: ['employeeEmail', 'date'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          employeeEmail: z.string().email(),
+          date: ISO_DATE,
+          patternName: z.string().min(2).optional(),
+          startTime: TIME.optional(),
+          endTime: TIME.optional(),
+          notes: z.string().max(500).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      if (Boolean(parsed.data.startTime) !== Boolean(parsed.data.endTime)) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Indica "startTime" y "endTime" juntos',
+        })
+      }
+      if (
+        !parsed.data.patternName &&
+        !parsed.data.startTime &&
+        parsed.data.notes === undefined
+      ) {
+        throw createError({ statusCode: 400, statusMessage: 'Nada que actualizar' })
+      }
+
+      const employee = await findEmployee(ctx, { email: parsed.data.employeeEmail })
+      const [assignment] = await ctx.db
+        .select()
+        .from(schema.shiftAssignments)
+        .where(
+          and(
+            eq(schema.shiftAssignments.orgId, ctx.org.id),
+            eq(schema.shiftAssignments.employeeId, employee.id),
+            eq(schema.shiftAssignments.date, parsed.data.date),
+          ),
+        )
+        .limit(1)
+      if (!assignment) {
+        throw createError({ statusCode: 404, statusMessage: 'No hay turno asignado ese día' })
+      }
+
+      const patch: Partial<typeof schema.shiftAssignments.$inferInsert> = {}
+      if (parsed.data.patternName) {
+        const [pattern] = await ctx.db
+          .select()
+          .from(schema.shiftPatterns)
+          .where(
+            and(
+              eq(schema.shiftPatterns.orgId, ctx.org.id),
+              sql`lower(${schema.shiftPatterns.name}) = lower(${parsed.data.patternName})`,
+            ),
+          )
+          .limit(1)
+        if (!pattern) throw createError({ statusCode: 404, statusMessage: 'Turno no encontrado' })
+        patch.patternId = pattern.id
+        patch.startTime = pattern.startTime
+        patch.endTime = pattern.endTime
+      } else if (parsed.data.startTime && parsed.data.endTime) {
+        patch.startTime = parsed.data.startTime
+        patch.endTime = parsed.data.endTime
+      }
+      if (parsed.data.notes !== undefined) patch.notes = parsed.data.notes
+
+      await ctx.db
+        .update(schema.shiftAssignments)
+        .set(patch)
+        .where(eq(schema.shiftAssignments.id, assignment.id))
+
+      return {
+        summary: `Turno de ${employee.firstName} ${employee.lastName} el ${parsed.data.date} actualizado`,
+        data: { id: assignment.id, ...patch },
+      }
+    },
+  },
+
   delete_shift_assignment: {
     module: 'turnos',
     mutate: true,
@@ -956,6 +1444,7 @@ export const TOOLS: Record<string, ToolDefinition> = {
           id: schema.expenseReports.id,
           status: schema.expenseReports.status,
           total: schema.expenseReports.total,
+          notes: schema.expenseReports.notes,
           createdAt: schema.expenseReports.createdAt,
           employeeEmail: schema.employees.email,
         })
@@ -964,7 +1453,23 @@ export const TOOLS: Record<string, ToolDefinition> = {
         .where(and(...conditions))
         .orderBy(desc(schema.expenseReports.createdAt))
 
-      return { summary: `${rows.length} gasto(s)`, data: rows }
+      const data = []
+      for (const row of rows) {
+        const lines = await ctx.db
+          .select({
+            id: schema.expenseLines.id,
+            date: schema.expenseLines.date,
+            category: schema.expenseLines.category,
+            description: schema.expenseLines.description,
+            amount: schema.expenseLines.amount,
+          })
+          .from(schema.expenseLines)
+          .where(eq(schema.expenseLines.reportId, row.id))
+          .orderBy(schema.expenseLines.date)
+        data.push({ ...row, lines })
+      }
+
+      return { summary: `${data.length} gasto(s)`, data }
     },
   },
 
@@ -1038,7 +1543,163 @@ export const TOOLS: Record<string, ToolDefinition> = {
         })
       })
 
+      await ensureExpenseCategories(ctx.db, ctx.org.id, [parsed.data.category]).catch(() => {})
+
       return { summary: `Gasto de ${parsed.data.amount} € creado`, data: { id } }
+    },
+  },
+
+  update_expense: {
+    module: 'gastos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'update_expense',
+        description:
+          'Edita la línea o las notas de una nota de gasto en borrador. Recalcula el total.',
+        parameters: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Id de la nota de gasto' },
+            lineId: { type: 'string', description: 'Línea concreta; por defecto la primera' },
+            date: { type: 'string', description: 'YYYY-MM-DD' },
+            category: { type: 'string' },
+            description: { type: 'string' },
+            amount: { type: 'number' },
+            notes: { type: 'string', description: 'Notas internas de la nota de gasto' },
+          },
+          required: ['id'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          id: z.string().min(1),
+          lineId: z.string().optional(),
+          date: ISO_DATE.optional(),
+          category: z.string().min(1).max(60).optional(),
+          description: z.string().max(300).nullable().optional(),
+          amount: z.number().positive().optional(),
+          notes: z.string().max(1000).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [report] = await ctx.db
+        .select()
+        .from(schema.expenseReports)
+        .where(
+          and(eq(schema.expenseReports.id, parsed.data.id), eq(schema.expenseReports.orgId, ctx.org.id)),
+        )
+        .limit(1)
+      if (!report) throw createError({ statusCode: 404, statusMessage: 'Gasto no encontrado' })
+      if (report.status !== 'draft') {
+        throw createError({ statusCode: 409, statusMessage: 'Solo se editan notas en borrador' })
+      }
+
+      const lines = await ctx.db
+        .select()
+        .from(schema.expenseLines)
+        .where(eq(schema.expenseLines.reportId, report.id))
+        .orderBy(schema.expenseLines.date)
+      if (!lines.length) {
+        throw createError({ statusCode: 409, statusMessage: 'La nota no tiene líneas' })
+      }
+
+      const line = parsed.data.lineId
+        ? lines.find((row) => row.id === parsed.data.lineId)
+        : lines[0]
+      if (!line) throw createError({ statusCode: 404, statusMessage: 'Línea no encontrada' })
+
+      const linePatch: Partial<typeof schema.expenseLines.$inferInsert> = {}
+      if (parsed.data.date) linePatch.date = parsed.data.date
+      if (parsed.data.category) linePatch.category = parsed.data.category
+      if (parsed.data.description !== undefined) linePatch.description = parsed.data.description
+      if (parsed.data.amount !== undefined) linePatch.amount = parsed.data.amount
+
+      const hasLineChange = Object.keys(linePatch).length > 0
+      if (!hasLineChange && parsed.data.notes === undefined) {
+        throw createError({ statusCode: 400, statusMessage: 'Nada que actualizar' })
+      }
+
+      const total =
+        Math.round(
+          lines.reduce(
+            (sum, row) =>
+              sum + (row.id === line.id ? (parsed.data.amount ?? row.amount) : row.amount),
+            0,
+          ) * 100,
+        ) / 100
+
+      await ctx.db.transaction(async (tx) => {
+        if (hasLineChange) {
+          await tx.update(schema.expenseLines).set(linePatch).where(eq(schema.expenseLines.id, line.id))
+        }
+        await tx
+          .update(schema.expenseReports)
+          .set({
+            total,
+            ...(parsed.data.notes !== undefined ? { notes: parsed.data.notes } : {}),
+          })
+          .where(eq(schema.expenseReports.id, report.id))
+      })
+
+      if (linePatch.category) {
+        await ensureExpenseCategories(ctx.db, ctx.org.id, [linePatch.category]).catch(() => {})
+      }
+
+      return {
+        summary: `Gasto ${report.id} actualizado (total ${total} €)`,
+        data: { id: report.id, lineId: line.id, total, ...linePatch },
+      }
+    },
+  },
+
+  submit_expense: {
+    module: 'gastos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'submit_expense',
+        description: 'Envía a validación una nota de gasto en borrador del propio usuario.',
+        parameters: {
+          type: 'object',
+          properties: { id: { type: 'string' } },
+          required: ['id'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z.object({ id: z.string().min(1) }).safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [report] = await ctx.db
+        .select()
+        .from(schema.expenseReports)
+        .where(
+          and(eq(schema.expenseReports.id, parsed.data.id), eq(schema.expenseReports.orgId, ctx.org.id)),
+        )
+        .limit(1)
+      if (!report) throw createError({ statusCode: 404, statusMessage: 'Gasto no encontrado' })
+      if (!ctx.employee || report.employeeId !== ctx.employee.id) {
+        throw createError({
+          statusCode: 403,
+          statusMessage: 'Solo el propietario puede enviar la nota de gasto',
+        })
+      }
+      if (report.status !== 'draft') {
+        throw createError({ statusCode: 409, statusMessage: 'Solo se envían notas en borrador' })
+      }
+
+      await ctx.db
+        .update(schema.expenseReports)
+        .set({ status: 'submitted', submittedAt: new Date() })
+        .where(eq(schema.expenseReports.id, report.id))
+
+      return { summary: `Gasto ${report.id} enviado a validación`, data: { status: 'submitted' } }
     },
   },
 
@@ -1098,6 +1759,227 @@ export const TOOLS: Record<string, ToolDefinition> = {
         .where(eq(schema.expenseReports.id, report.id))
 
       return { summary: `Gasto ${transition.to}`, data: { id: report.id, status: transition.to } }
+    },
+  },
+
+  delete_expense: {
+    module: 'gastos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_expense',
+        description: 'Elimina una nota de gasto en borrador (con sus líneas).',
+        parameters: {
+          type: 'object',
+          properties: { id: { type: 'string' } },
+          required: ['id'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z.object({ id: z.string().min(1) }).safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [report] = await ctx.db
+        .select()
+        .from(schema.expenseReports)
+        .where(
+          and(eq(schema.expenseReports.id, parsed.data.id), eq(schema.expenseReports.orgId, ctx.org.id)),
+        )
+        .limit(1)
+      if (!report) throw createError({ statusCode: 404, statusMessage: 'Gasto no encontrado' })
+      if (report.status !== 'draft') {
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'Solo se borran notas en borrador; el resto conserva su histórico',
+        })
+      }
+
+      await ctx.db.delete(schema.expenseReports).where(eq(schema.expenseReports.id, report.id))
+      return { summary: `Gasto ${report.id} eliminado` }
+    },
+  },
+
+  list_expense_categories: {
+    module: 'gastos',
+    mutate: false,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'list_expense_categories',
+        description: 'Lista las categorías de gasto disponibles en la empresa.',
+        parameters: { type: 'object', properties: {} },
+      },
+    },
+    async run(ctx) {
+      const rows = await ctx.db
+        .select({
+          name: schema.expenseCategories.name,
+          color: schema.expenseCategories.color,
+          active: schema.expenseCategories.active,
+        })
+        .from(schema.expenseCategories)
+        .where(eq(schema.expenseCategories.orgId, ctx.org.id))
+        .orderBy(schema.expenseCategories.name)
+      return { summary: `${rows.length} categoría(s)`, data: rows }
+    },
+  },
+
+  create_expense_category: {
+    module: 'gastos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'create_expense_category',
+        description:
+          'Crea una categoría de gasto nueva (p. ej. EPIs, Material de seguridad, Compras de empresa).',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            color: { type: 'string', description: 'Color hex' },
+          },
+          required: ['name'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          name: z.string().trim().min(2).max(60),
+          color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [existing] = await ctx.db
+        .select()
+        .from(schema.expenseCategories)
+        .where(
+          and(
+            eq(schema.expenseCategories.orgId, ctx.org.id),
+            sql`lower(${schema.expenseCategories.name}) = lower(${parsed.data.name})`,
+          ),
+        )
+        .limit(1)
+      if (existing) {
+        return {
+          summary: `La categoría "${existing.name}" ya existía`,
+          data: { id: existing.id, created: false },
+        }
+      }
+
+      const id = crypto.randomUUID()
+      await ctx.db.insert(schema.expenseCategories).values({
+        id,
+        orgId: ctx.org.id,
+        name: parsed.data.name,
+        color: parsed.data.color ?? '#0ea5e9',
+        active: true,
+        createdAt: new Date(),
+      })
+      return { summary: `Categoría "${parsed.data.name}" creada`, data: { id, created: true } }
+    },
+  },
+
+  update_expense_category: {
+    module: 'gastos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'update_expense_category',
+        description: 'Renombra, recolorea o desactiva una categoría de gasto.',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Nombre actual' },
+            newName: { type: 'string' },
+            color: { type: 'string' },
+            active: { type: 'boolean' },
+          },
+          required: ['name'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          name: z.string().trim().min(2).max(60),
+          newName: z.string().trim().min(2).max(60).optional(),
+          color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+          active: z.boolean().optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [category] = await ctx.db
+        .select()
+        .from(schema.expenseCategories)
+        .where(
+          and(
+            eq(schema.expenseCategories.orgId, ctx.org.id),
+            sql`lower(${schema.expenseCategories.name}) = lower(${parsed.data.name})`,
+          ),
+        )
+        .limit(1)
+      if (!category) throw createError({ statusCode: 404, statusMessage: 'Categoría no encontrada' })
+
+      const patch = {
+        ...(parsed.data.newName ? { name: parsed.data.newName } : {}),
+        ...(parsed.data.color ? { color: parsed.data.color } : {}),
+        ...(parsed.data.active !== undefined ? { active: parsed.data.active } : {}),
+      }
+      if (!Object.keys(patch).length) {
+        throw createError({ statusCode: 400, statusMessage: 'Nada que actualizar' })
+      }
+
+      await ctx.db
+        .update(schema.expenseCategories)
+        .set(patch)
+        .where(eq(schema.expenseCategories.id, category.id))
+      return {
+        summary: `Categoría "${patch.name ?? category.name}" actualizada`,
+        data: { id: category.id, ...patch },
+      }
+    },
+  },
+
+  delete_expense_category: {
+    module: 'gastos',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_expense_category',
+        description:
+          'Elimina una categoría del catálogo. Las notas antiguas conservan el texto de la categoría.',
+        parameters: {
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z.object({ name: z.string().trim().min(2).max(60) }).safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const deleted = await ctx.db
+        .delete(schema.expenseCategories)
+        .where(
+          and(
+            eq(schema.expenseCategories.orgId, ctx.org.id),
+            sql`lower(${schema.expenseCategories.name}) = lower(${parsed.data.name})`,
+          ),
+        )
+        .returning({ id: schema.expenseCategories.id })
+      if (!deleted.length) {
+        throw createError({ statusCode: 404, statusMessage: 'Categoría no encontrada' })
+      }
+      return { summary: `Categoría "${parsed.data.name}" eliminada` }
     },
   },
 
@@ -1236,6 +2118,51 @@ export const TOOLS: Record<string, ToolDefinition> = {
     },
   },
 
+  delete_payroll_period: {
+    module: 'nominas',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_payroll_period',
+        description: 'Elimina un periodo de nómina abierto y todas sus nóminas.',
+        parameters: {
+          type: 'object',
+          properties: {
+            year: { type: 'number' },
+            month: { type: 'number' },
+          },
+          required: ['year', 'month'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({ year: z.number().int(), month: z.number().int().min(1).max(12) })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [period] = await ctx.db
+        .select()
+        .from(schema.payrollPeriods)
+        .where(
+          and(
+            eq(schema.payrollPeriods.orgId, ctx.org.id),
+            eq(schema.payrollPeriods.year, parsed.data.year),
+            eq(schema.payrollPeriods.month, parsed.data.month),
+          ),
+        )
+        .limit(1)
+      if (!period) throw createError({ statusCode: 404, statusMessage: 'Periodo no encontrado' })
+      if (period.status === 'closed') {
+        throw createError({ statusCode: 409, statusMessage: 'No se puede borrar un periodo cerrado' })
+      }
+
+      await ctx.db.delete(schema.payrollPeriods).where(eq(schema.payrollPeriods.id, period.id))
+      return { summary: `Periodo ${parsed.data.month}/${parsed.data.year} eliminado` }
+    },
+  },
+
   list_payslips: {
     module: 'nominas',
     mutate: false,
@@ -1355,6 +2282,68 @@ export const TOOLS: Record<string, ToolDefinition> = {
       return {
         summary: `Nómina de ${employee.firstName} ${employee.lastName} guardada`,
         data: { id: values.id, updated: Boolean(existing) },
+      }
+    },
+  },
+
+  delete_payslip: {
+    module: 'nominas',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_payslip',
+        description: 'Elimina la nómina de un empleado en un periodo abierto.',
+        parameters: {
+          type: 'object',
+          properties: {
+            employeeEmail: { type: 'string' },
+            year: { type: 'number' },
+            month: { type: 'number' },
+          },
+          required: ['employeeEmail', 'year', 'month'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          employeeEmail: z.string().email(),
+          year: z.number().int(),
+          month: z.number().int().min(1).max(12),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [period] = await ctx.db
+        .select()
+        .from(schema.payrollPeriods)
+        .where(
+          and(
+            eq(schema.payrollPeriods.orgId, ctx.org.id),
+            eq(schema.payrollPeriods.year, parsed.data.year),
+            eq(schema.payrollPeriods.month, parsed.data.month),
+          ),
+        )
+        .limit(1)
+      if (!period) throw createError({ statusCode: 404, statusMessage: 'Periodo no encontrado' })
+      if (period.status === 'closed') {
+        throw createError({ statusCode: 409, statusMessage: 'El periodo está cerrado' })
+      }
+
+      const employee = await findEmployee(ctx, { email: parsed.data.employeeEmail })
+      const deleted = await ctx.db
+        .delete(schema.payslips)
+        .where(
+          and(eq(schema.payslips.periodId, period.id), eq(schema.payslips.employeeId, employee.id)),
+        )
+        .returning({ id: schema.payslips.id })
+      if (!deleted.length) {
+        throw createError({ statusCode: 404, statusMessage: 'Ese empleado no tiene nómina en el periodo' })
+      }
+
+      return {
+        summary: `Nómina de ${employee.firstName} ${employee.lastName} (${parsed.data.month}/${parsed.data.year}) eliminada`,
       }
     },
   },
@@ -1486,6 +2475,38 @@ export const TOOLS: Record<string, ToolDefinition> = {
 
       await ctx.db.update(schema.jobPostings).set(patch).where(eq(schema.jobPostings.id, job.id))
       return { summary: `Oferta "${patch.title ?? job.title}" actualizada`, data: { id: job.id } }
+    },
+  },
+
+  delete_job_posting: {
+    module: 'reclutamiento',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_job_posting',
+        description: 'Elimina una oferta y sus candidaturas.',
+        parameters: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            titleMatch: { type: 'string', description: 'Título exacto de la oferta' },
+          },
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          id: z.string().optional(),
+          titleMatch: z.string().min(3).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const job = await findJob(ctx, { id: parsed.data.id, title: parsed.data.titleMatch })
+      await ctx.db.delete(schema.jobPostings).where(eq(schema.jobPostings.id, job.id))
+      return { summary: `Oferta "${job.title}" eliminada junto con sus candidaturas` }
     },
   },
 
@@ -1643,7 +2664,68 @@ export const TOOLS: Record<string, ToolDefinition> = {
     },
   },
 
+  delete_candidate: {
+    module: 'reclutamiento',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_candidate',
+        description: 'Elimina una candidatura por email (y oferta, si se indica).',
+        parameters: {
+          type: 'object',
+          properties: {
+            email: { type: 'string' },
+            jobTitle: { type: 'string' },
+          },
+          required: ['email'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({ email: z.string().email(), jobTitle: z.string().optional() })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const candidate = await findCandidate(ctx, {
+        email: parsed.data.email,
+        jobTitle: parsed.data.jobTitle,
+      })
+      await ctx.db.delete(schema.candidates).where(eq(schema.candidates.id, candidate.id))
+      return { summary: `Candidatura de ${candidate.name} eliminada` }
+    },
+  },
+
   /* --------------------------- Vacaciones ---------------------------- */
+  list_leave_types: {
+    module: 'vacaciones',
+    mutate: false,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'list_leave_types',
+        description:
+          'Lista los tipos de permiso disponibles (código, nombre, si requieren aprobación).',
+        parameters: { type: 'object', properties: {} },
+      },
+    },
+    async run(ctx) {
+      const rows = await ctx.db
+        .select({
+          code: schema.leaveTypes.code,
+          name: schema.leaveTypes.name,
+          unit: schema.leaveTypes.unit,
+          requiresApproval: schema.leaveTypes.requiresApproval,
+          countsAgainstBalance: schema.leaveTypes.countsAgainstBalance,
+          active: schema.leaveTypes.active,
+        })
+        .from(schema.leaveTypes)
+        .where(eq(schema.leaveTypes.orgId, ctx.org.id))
+      return { summary: `${rows.length} tipo(s) de permiso`, data: rows }
+    },
+  },
+
   list_leave_requests: {
     module: 'vacaciones',
     mutate: false,
@@ -1764,8 +2846,7 @@ export const TOOLS: Record<string, ToolDefinition> = {
         holidays,
         workweek: settings.workweek,
       })
-      if (days <= 0) {
-        throw createError({ statusCode: 400, statusMessage: 'El rango no contiene días laborables' })
+      if (days <= 0) {        throw createError({ statusCode: 400, statusMessage: 'El rango no contiene días laborables' })
       }
 
       const status = leaveType.requiresApproval ? 'pending' : 'approved'
@@ -1831,6 +2912,263 @@ export const TOOLS: Record<string, ToolDefinition> = {
         .set({ status: 'cancelled', updatedAt: new Date() })
         .where(eq(schema.leaveRequests.id, request.id))
       return { summary: 'Solicitud cancelada', data: { id: request.id } }
+    },
+  },
+
+  update_leave_request: {
+    module: 'vacaciones',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'update_leave_request',
+        description:
+          'Edita una solicitud pendiente (fechas, tipo o motivo). Recalcula los días laborables.',
+        parameters: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            leaveType: { type: 'string', description: 'Código o nombre del tipo de permiso' },
+            startDate: { type: 'string', description: 'YYYY-MM-DD' },
+            endDate: { type: 'string', description: 'YYYY-MM-DD' },
+            reason: { type: 'string' },
+          },
+          required: ['id'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          id: z.string().min(1),
+          leaveType: z.string().min(1).optional(),
+          startDate: ISO_DATE.optional(),
+          endDate: ISO_DATE.optional(),
+          reason: z.string().max(500).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [request] = await ctx.db
+        .select()
+        .from(schema.leaveRequests)
+        .where(
+          and(eq(schema.leaveRequests.id, parsed.data.id), eq(schema.leaveRequests.orgId, ctx.org.id)),
+        )
+        .limit(1)
+      if (!request) throw createError({ statusCode: 404, statusMessage: 'Solicitud no encontrada' })
+      if (request.status !== 'pending') {
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'Solo se editan solicitudes pendientes; cancélala y crea otra',
+        })
+      }
+
+      const startDate = parsed.data.startDate ?? request.startDate
+      const endDate = parsed.data.endDate ?? request.endDate
+      if (endDate < startDate) {
+        throw createError({ statusCode: 400, statusMessage: 'La fecha de fin es anterior al inicio' })
+      }
+
+      let leaveTypeId = request.leaveTypeId
+      if (parsed.data.leaveType) {
+        const [leaveType] = await ctx.db
+          .select()
+          .from(schema.leaveTypes)
+          .where(
+            and(
+              eq(schema.leaveTypes.orgId, ctx.org.id),
+              sql`(lower(${schema.leaveTypes.code}) = lower(${parsed.data.leaveType}) or lower(${schema.leaveTypes.name}) = lower(${parsed.data.leaveType}))`,
+            ),
+          )
+          .limit(1)
+        if (!leaveType) {
+          throw createError({ statusCode: 404, statusMessage: 'Tipo de permiso no encontrado' })
+        }
+        leaveTypeId = leaveType.id
+      }
+
+      const days = await countDaysForOrg(ctx, startDate, endDate)
+      if (days <= 0) {
+        throw createError({ statusCode: 400, statusMessage: 'El rango no contiene días laborables' })
+      }
+
+      await ctx.db
+        .update(schema.leaveRequests)
+        .set({
+          startDate,
+          endDate,
+          days,
+          leaveTypeId,
+          ...(parsed.data.reason !== undefined ? { reason: parsed.data.reason } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.leaveRequests.id, request.id))
+
+      return {
+        summary: `Solicitud ${request.id} actualizada (${days} día/s)`,
+        data: { id: request.id, startDate, endDate, days },
+      }
+    },
+  },
+
+  decide_leave_request: {
+    module: 'vacaciones',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'decide_leave_request',
+        description:
+          'Aprueba o rechaza una solicitud pendiente. Respeta el ámbito de aprobación del usuario.',
+        parameters: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            decision: { type: 'string', enum: ['approve', 'reject'] },
+            note: { type: 'string', description: 'Comentario para el empleado' },
+          },
+          required: ['id', 'decision'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          id: z.string().min(1),
+          decision: z.enum(['approve', 'reject']),
+          note: z.string().max(500).optional(),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [request] = await ctx.db
+        .select()
+        .from(schema.leaveRequests)
+        .where(
+          and(eq(schema.leaveRequests.id, parsed.data.id), eq(schema.leaveRequests.orgId, ctx.org.id)),
+        )
+        .limit(1)
+      if (!request) throw createError({ statusCode: 404, statusMessage: 'Solicitud no encontrada' })
+      if (request.status !== 'pending') {
+        throw createError({ statusCode: 409, statusMessage: 'La solicitud ya no está pendiente' })
+      }
+
+      const [requestEmployee] = await ctx.db
+        .select()
+        .from(schema.employees)
+        .where(eq(schema.employees.id, request.employeeId))
+        .limit(1)
+      if (!requestEmployee) {
+        throw createError({ statusCode: 404, statusMessage: 'Empleado no encontrado' })
+      }
+
+      const allowed = await canApprove(
+        ctx.db,
+        ctx.user,
+        ctx.employee ?? undefined,
+        requestEmployee.departmentId,
+      )
+      if (!allowed) {
+        throw createError({ statusCode: 403, statusMessage: 'No puedes aprobar esta solicitud' })
+      }
+
+      const [leaveType] = await ctx.db
+        .select()
+        .from(schema.leaveTypes)
+        .where(eq(schema.leaveTypes.id, request.leaveTypeId))
+        .limit(1)
+      if (!leaveType) {
+        throw createError({ statusCode: 404, statusMessage: 'Tipo de permiso no encontrado' })
+      }
+
+      if (parsed.data.decision === 'approve' && leaveType.countsAgainstBalance) {
+        const settings = await getSettingsForOrg(ctx.db, ctx.org.id)
+        const balance = await getBalanceForType(ctx.db, {
+          employee: requestEmployee,
+          orgId: ctx.org.id,
+          leaveType,
+          year: Number(request.startDate.slice(0, 4)),
+          settings,
+        })
+        if (balance && balance.availableDays < 0) {
+          throw createError({
+            statusCode: 409,
+            statusMessage: `El saldo no cubre la solicitud (disponible: ${balance.availableDays} días)`,
+          })
+        }
+      }
+
+      const now = new Date()
+      await ctx.db
+        .update(schema.leaveRequests)
+        .set({
+          status: parsed.data.decision === 'approve' ? 'approved' : 'rejected',
+          decidedBy: ctx.employee?.id ?? null,
+          decidedAt: now,
+          decisionNote: parsed.data.note ?? null,
+          updatedAt: now,
+        })
+        .where(eq(schema.leaveRequests.id, request.id))
+
+      await queueEmail(ctx.db, {
+        employeeId: requestEmployee.id,
+        email: requestEmployee.email,
+        type: `leave.request.${parsed.data.decision}`,
+        subject:
+          parsed.data.decision === 'approve'
+            ? 'Tu solicitud de vacaciones ha sido aprobada'
+            : 'Tu solicitud de vacaciones ha sido rechazada',
+        body: `Solicitud del ${request.startDate} al ${request.endDate} (${request.days} días).${
+          parsed.data.note ? `\nNota: ${parsed.data.note}` : ''
+        }`,
+      })
+      void flushEmails(ctx.db).catch((error) => console.error('[mail]', error))
+
+      return {
+        summary: `Solicitud de ${requestEmployee.firstName} ${requestEmployee.lastName} ${parsed.data.decision === 'approve' ? 'aprobada' : 'rechazada'}`,
+        data: { id: request.id, decision: parsed.data.decision },
+      }
+    },
+  },
+
+  delete_leave_request: {
+    module: 'vacaciones',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_leave_request',
+        description:
+          'Elimina una solicitud cancelada o rechazada (limpia). Las aprobadas conservan su histórico.',
+        parameters: {
+          type: 'object',
+          properties: { id: { type: 'string' } },
+          required: ['id'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z.object({ id: z.string().min(1) }).safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const [request] = await ctx.db
+        .select()
+        .from(schema.leaveRequests)
+        .where(
+          and(eq(schema.leaveRequests.id, parsed.data.id), eq(schema.leaveRequests.orgId, ctx.org.id)),
+        )
+        .limit(1)
+      if (!request) throw createError({ statusCode: 404, statusMessage: 'Solicitud no encontrada' })
+      if (request.status !== 'cancelled' && request.status !== 'rejected') {
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'Solo se eliminan solicitudes canceladas o rechazadas',
+        })
+      }
+
+      await ctx.db.delete(schema.leaveRequests).where(eq(schema.leaveRequests.id, request.id))
+      return { summary: `Solicitud ${request.id} eliminada` }
     },
   },
 
@@ -1937,6 +3275,99 @@ export const TOOLS: Record<string, ToolDefinition> = {
         summary: `Denuncia ${report.trackingCode} actualizada`,
         data: { status: parsed.data.status ?? report.status },
       }
+    },
+  },
+
+  create_whistle_report: {
+    module: 'denuncias',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'create_whistle_report',
+        description:
+          'Registra una denuncia recibida por otro canal (presencial, email) para que quede en el expediente.',
+        parameters: {
+          type: 'object',
+          properties: {
+            category: { type: 'string', description: 'Categoría de la denuncia' },
+            description: { type: 'string', description: 'Relato de los hechos' },
+          },
+          required: ['category', 'description'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({
+          category: z.string().min(2).max(80),
+          description: z.string().min(20).max(5000),
+        })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const now = new Date()
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const code = generateTrackingCode()
+        const [existing] = await ctx.db
+          .select({ id: schema.whistleReports.id })
+          .from(schema.whistleReports)
+          .where(eq(schema.whistleReports.trackingCode, code))
+          .limit(1)
+        if (existing) continue
+
+        await ctx.db.insert(schema.whistleReports).values({
+          id: crypto.randomUUID(),
+          orgId: ctx.org.id,
+          trackingCode: code,
+          category: parsed.data.category,
+          description: parsed.data.description,
+          status: 'new',
+          createdAt: now,
+          updatedAt: now,
+        })
+        return { summary: `Denuncia registrada con código ${code}`, data: { trackingCode: code } }
+      }
+      throw createError({ statusCode: 500, statusMessage: 'No se pudo generar el código' })
+    },
+  },
+
+  delete_whistle_report: {
+    module: 'denuncias',
+    mutate: true,
+    spec: {
+      type: 'function',
+      function: {
+        name: 'delete_whistle_report',
+        description: 'Elimina una denuncia y su hilo de mensajes por código de seguimiento.',
+        parameters: {
+          type: 'object',
+          properties: {
+            trackingCode: { type: 'string', description: 'Código WD-XXXXXXXX' },
+          },
+          required: ['trackingCode'],
+        },
+      },
+    },
+    async run(ctx, raw) {
+      const parsed = z
+        .object({ trackingCode: z.string().regex(/^WD-[A-Z0-9]{8}$/i) })
+        .safeParse(parseArgs(raw))
+      if (!parsed.success) throw invalid(parsed.error)
+
+      const deleted = await ctx.db
+        .delete(schema.whistleReports)
+        .where(
+          and(
+            eq(schema.whistleReports.orgId, ctx.org.id),
+            eq(schema.whistleReports.trackingCode, parsed.data.trackingCode.toUpperCase()),
+          ),
+        )
+        .returning({ id: schema.whistleReports.id })
+      if (!deleted.length) {
+        throw createError({ statusCode: 404, statusMessage: 'Denuncia no encontrada' })
+      }
+      return { summary: `Denuncia ${parsed.data.trackingCode.toUpperCase()} eliminada` }
     },
   },
 }
