@@ -55,14 +55,6 @@ bun run dev               # http://localhost:3000
 
 Neon gestiona backups con point-in-time restore y branching desde su consola.
 
-### Opción B · PostgreSQL local
-
-```bash
-docker compose -f docker-compose.dev.yml up -d
-# DATABASE_URL=postgresql://postgres:postgres@localhost:5433/rrhh
-bun run db:migrate && bun run db:seed
-```
-
 ### Cuentas de demostración
 
 | Rol | Email | Contraseña |
@@ -289,11 +281,7 @@ cp .env.example .env       # DATABASE_URL de Neon + secretos
 docker compose up -d --build
 ```
 
-La app aplica las migraciones al arrancar. Para desarrollo con PostgreSQL local:
-
-```bash
-docker compose -f docker-compose.dev.yml up -d
-```
+La app aplica las migraciones al arrancar.
 
 ## Módulos siguientes
 

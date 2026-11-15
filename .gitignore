@@ -15,4 +15,5 @@ playwright-report
 .dev.vars
 .wrangler
 .DS_Store
+bun.lock
 .neon
