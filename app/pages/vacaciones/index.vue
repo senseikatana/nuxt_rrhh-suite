@@ -13,23 +13,25 @@ const { confirm } = useDialogs()
 const year = new Date().getFullYear()
 const currentYear = ref(year)
 
-const { data: balance, refresh: refreshBalance } = await useAsyncData<BalanceResponse>(
-  'leave-balance',
-  () => requestFetch('/api/leave/balance', { query: { year: currentYear.value } }),
-)
-
-const { data: requests, refresh: refreshRequests } = await useAsyncData<LeaveRequestRow[]>(
-  'leave-requests',
-  () => requestFetch('/api/leave/requests', { query: { scope: 'mine', year: currentYear.value } }),
-)
-
-const { data: holidayDates } = await useAsyncData<string[]>('leave-holidays', async () => {
-  const [current, next] = await Promise.all([
-    requestFetch<{ dates: string[] }>('/api/leave/holidays', { query: { year } }),
-    requestFetch<{ dates: string[] }>('/api/leave/holidays', { query: { year: year + 1 } }),
-  ])
-  return [...current.dates, ...next.dates]
-})
+const [
+  { data: balance, refresh: refreshBalance },
+  { data: requests, refresh: refreshRequests },
+  { data: holidayDates },
+] = await Promise.all([
+  useAsyncData<BalanceResponse>('leave-balance', () =>
+    requestFetch('/api/leave/balance', { query: { year: currentYear.value } }),
+  ),
+  useAsyncData<LeaveRequestRow[]>('leave-requests', () =>
+    requestFetch('/api/leave/requests', { query: { scope: 'mine', year: currentYear.value } }),
+  ),
+  useAsyncData<string[]>('leave-holidays', async () => {
+    const [current, next] = await Promise.all([
+      requestFetch<{ dates: string[] }>('/api/leave/holidays', { query: { year } }),
+      requestFetch<{ dates: string[] }>('/api/leave/holidays', { query: { year: year + 1 } }),
+    ])
+    return [...current.dates, ...next.dates]
+  }),
+])
 
 const types = computed<LeaveType[]>(() => balance.value?.types ?? [])
 

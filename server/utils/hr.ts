@@ -40,7 +40,12 @@ export async function getActiveEmployees(db: Db, orgId: string) {
 export async function getContext(event: H3Event) {
   const session = await requireUser(event)
   const db = useDb()
-  const org = await getOrganization(db)
+  // Organización y ficha del empleado no dependen entre sí: en paralelo se
+  // ahorra un viaje completo a la base de datos en cada petición de la API.
+  const [org, employee] = await Promise.all([
+    getOrganization(db),
+    getEmployeeByUserId(db, session.user.id),
+  ])
 
   if (!org) {
     throw createError({
@@ -49,7 +54,6 @@ export async function getContext(event: H3Event) {
     })
   }
 
-  const employee = await getEmployeeByUserId(db, session.user.id)
   const settings = await getSettingsForOrg(db, org.id)
 
   return {

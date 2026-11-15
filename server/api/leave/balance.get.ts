@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'Sin permisos para consultar otro empleado' })
   }
 
-  const types = await db
+  const typesPromise = db
     .select()
     .from(schema.leaveTypes)
     .where(and(eq(schema.leaveTypes.orgId, org.id), eq(schema.leaveTypes.active, true)))
@@ -41,6 +41,8 @@ export default defineEventHandler(async (event) => {
     target = row
   }
 
+  const types = await typesPromise
+
   // Usuarios sin ficha de empleado (por ejemplo, un registro recién creado):
   // se devuelve un saldo vacío en lugar de romper el panel.
   if (!target) {
@@ -53,17 +55,26 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const balances: BalanceForTypeResult[] = []
-  for (const type of types) {
-    const balance = await getBalanceForType(db, {
-      employee: target,
-      orgId: org.id,
-      leaveType: type,
-      year,
-      settings,
-    })
-    if (balance) balances.push(balance)
-  }
+  // Cada tipo de permiso y la bolsa de horas se calculan en paralelo: antes se
+  // encadenaban y el panel tardaba ~300 ms solo en este endpoint.
+  const [balanceResults, overtime] = await Promise.all([
+    Promise.all(
+      types.map((type) =>
+        getBalanceForType(db, {
+          employee: target,
+          orgId: org.id,
+          leaveType: type,
+          year,
+          settings,
+        }),
+      ),
+    ),
+    getOvertimeSummary(db, target.id, settings),
+  ])
+
+  const balances = balanceResults.filter(
+    (balance): balance is BalanceForTypeResult => Boolean(balance),
+  )
 
   return {
     year,
@@ -75,7 +86,7 @@ export default defineEventHandler(async (event) => {
       startDate: target.startDate,
     },
     balances,
-    overtime: await getOvertimeSummary(db, target.id, settings),
+    overtime,
     types,
   }
 })

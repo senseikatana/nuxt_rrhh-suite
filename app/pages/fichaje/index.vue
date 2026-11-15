@@ -32,26 +32,25 @@ const monthTo = endOfMonthKey(today)
 
 const hasEmployee = computed(() => Boolean(state.value?.employee))
 
-const { data: week, refresh: refreshWeek } = await useAsyncData<AttendanceSummary | null>(
-  'fichaje-week',
-  () =>
+const [
+  { data: week, refresh: refreshWeek },
+  { data: month, refresh: refreshMonth },
+  { data: team, refresh: refreshTeam },
+] = await Promise.all([
+  useAsyncData<AttendanceSummary | null>('fichaje-week', () =>
     hasEmployee.value
       ? requestFetch('/api/attendance/summary', { query: { from: weekFrom, to: weekTo } })
       : Promise.resolve(null),
-)
-
-const { data: month, refresh: refreshMonth } = await useAsyncData<AttendanceSummary | null>(
-  'fichaje-month',
-  () =>
+  ),
+  useAsyncData<AttendanceSummary | null>('fichaje-month', () =>
     hasEmployee.value
       ? requestFetch('/api/attendance/summary', { query: { from: monthFrom, to: monthTo } })
       : Promise.resolve(null),
-)
-
-const { data: team, refresh: refreshTeam } = await useAsyncData<TeamAttendanceResponse | null>(
-  'fichaje-team',
-  () => (isManager.value ? requestFetch('/api/attendance/team') : Promise.resolve(null)),
-)
+  ),
+  useAsyncData<TeamAttendanceResponse | null>('fichaje-team', () =>
+    isManager.value ? requestFetch('/api/attendance/team') : Promise.resolve(null),
+  ),
+])
 
 const expectedToday = computed(() => {
   const fromStatus = status.value?.expectedTodayMinutes ?? 0

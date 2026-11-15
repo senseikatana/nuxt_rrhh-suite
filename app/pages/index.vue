@@ -10,18 +10,6 @@ const toast = useToast()
 const year = new Date().getFullYear()
 const today = todayIso()
 
-const { data: balance } = await useAsyncData<BalanceResponse>('dash-balance', () =>
-  requestFetch('/api/leave/balance', { query: { year } }),
-)
-
-const { data: mine } = await useAsyncData<LeaveRequestRow[]>('dash-mine', () =>
-  requestFetch('/api/leave/requests', { query: { scope: 'mine', year } }),
-)
-
-const { data: calendar } = await useAsyncData<CalendarResponse>('dash-calendar', () =>
-  requestFetch('/api/leave/calendar', { query: { year } }),
-)
-
 interface ContentBlock {
   key: string
   title: string | null
@@ -29,19 +17,7 @@ interface ContentBlock {
   updatedAt: string
 }
 
-// Aviso editable desde el asistente de contenido (clave `dashboard.banner`).
-const { data: banner } = await useAsyncData<ContentBlock | null>('dash-banner', () =>
-  requestFetch<ContentBlock | null>('/api/content', { query: { key: 'dashboard.banner' } }).catch(
-    () => null,
-  ),
-)
-
-const { data: pending } = await useAsyncData<LeaveRequestRow[]>('dash-pending', () =>
-  isManager.value
-    ? requestFetch('/api/leave/requests', { query: { scope: 'team', status: 'pending', year } })
-    : Promise.resolve([]),
-)
-
+// El fichaje se lanza primero para que su petición solape con las demás.
 const {
   status: attendanceStatus,
   clocking: attendanceClocking,
@@ -50,6 +26,36 @@ const {
   balanceToday: attendanceBalance,
   nextDirection: attendanceNext,
 } = useAttendance('dash-attendance')
+
+// Todas las consultas del panel en paralelo. Antes se encadenaban con `await`
+// y el SSR sumaba cinco viajes a la base de datos uno detrás de otro.
+const [
+  { data: balance },
+  { data: mine },
+  { data: calendar },
+  { data: banner },
+  { data: pending },
+] = await Promise.all([
+  useAsyncData<BalanceResponse>('dash-balance', () =>
+    requestFetch('/api/leave/balance', { query: { year } }),
+  ),
+  useAsyncData<LeaveRequestRow[]>('dash-mine', () =>
+    requestFetch('/api/leave/requests', { query: { scope: 'mine', year } }),
+  ),
+  useAsyncData<CalendarResponse>('dash-calendar', () =>
+    requestFetch('/api/leave/calendar', { query: { year } }),
+  ),
+  useAsyncData<ContentBlock | null>('dash-banner', () =>
+    requestFetch<ContentBlock | null>('/api/content', { query: { key: 'dashboard.banner' } }).catch(
+      () => null,
+    ),
+  ),
+  useAsyncData<LeaveRequestRow[]>('dash-pending', () =>
+    isManager.value
+      ? requestFetch('/api/leave/requests', { query: { scope: 'team', status: 'pending', year } })
+      : Promise.resolve([]),
+  ),
+])
 
 const attendanceExpected = computed(() => {
   const fromStatus = attendanceStatus.value?.expectedTodayMinutes ?? 0
