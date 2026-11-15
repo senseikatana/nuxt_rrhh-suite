@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.3] - 2026-11-15
+
+Highlights: feat(admin): add demo-data purge and row actions and fix(auth): accept local and private origins for email signup, plus 5 more changes.
+
+- 🧹 chore(db): standardize Drizzle Kit on the Neon URL `8ec908f`
+  - `.env.example`
+  - `app/components/AppUserMenu.vue`
+  - `drizzle.config.ts`
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `pnpm-workspace.yaml`
+  - `server/plugins/database.ts`
+- 🚀 feat(admin): add demo-data purge and row actions `8a6286d`
+  - `app/pages/ajustes.vue`
+  - `app/pages/denuncias/index.vue`
+  - `app/pages/empleados/index.vue`
+  - `app/pages/nominas/index.vue`
+  - `app/pages/reclutamiento/index.vue`
+  - `server/api/admin/purge.post.ts`
+  - `server/api/employees/[id].delete.ts`
+  - `server/api/employees/[id].patch.ts`
+  - `server/api/payroll/payslips/[id].delete.ts`
+  - `server/api/payroll/periods/[id]/index.delete.ts`
+  - `server/api/recruitment/candidates/[id].delete.ts`
+  - `server/api/recruitment/jobs/[id].delete.ts`
+  - `server/api/whistle/[id].delete.ts`
+- 🚀 feat(ai): add full CRUD tools and a resizable prompt `c1bda9e`
+  - `app/components/AiChatPanel.vue`
+  - `server/services/ai/agent.ts`
+  - `server/services/ai/tools.ts`
+- 🚀 feat(expenses): add editable categories and spend-by-category summary `edff117`
+  - `app/pages/gastos/index.vue`
+  - `server/api/expenses/[id].delete.ts`
+  - `server/api/expenses/categories/[id].delete.ts`
+  - `server/api/expenses/categories/[id].patch.ts`
+  - `server/api/expenses/categories/index.get.ts`
+  - `server/api/expenses/categories/index.post.ts`
+  - `server/api/expenses/index.post.ts`
+  - `server/database/migrations/0006_expense_categories.sql`
+  - `server/database/migrations/meta/0006_snapshot.json`
+  - `server/database/migrations/meta/_journal.json`
+  - `server/database/schema.ts`
+  - `server/utils/expense-categories.ts`
+- ⚡ perf(ssr): fetch page data and auth context in parallel `e8e7f2b`
+  - `app/pages/fichaje/index.vue`
+  - `app/pages/index.vue`
+  - `app/pages/vacaciones/index.vue`
+  - `server/api/leave/balance.get.ts`
+  - `server/utils/hr.ts`
+- 🚀 feat(ui): gate navigation by role and open ERP modules directly `268aed9`
+  - `app/composables/useErpSession.ts`
+  - `app/layouts/default.vue`
+  - `app/middleware/auth.global.ts`
+  - `app/pages/erp/index.vue`
+  - `app/pages/herramientas.vue`
+- 🐛 fix(auth): accept local and private origins for email signup `31f48eb`
+  - `app/pages/signin.vue`
+  - `app/pages/signup.vue`
+  - `server/middleware/security.ts`
+  - `server/utils/allowed-origins.ts`
+  - `server/utils/auth.ts`
+
 ## [0.2.2] - 2026-11-15
 
 Highlights: feat(i18n): locale-prefixed routes and translated shell and fix(ui): restore hydration so sidebar, user menu and every button work, plus 12 more changes.
