@@ -17,28 +17,54 @@
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
+/**
+ * Nonce CSP por request.
+ *
+ * Nuxt necesita ejecutar scripts inline para hidratar (el bootstrap con el
+ * payload `window.__NUXT__`, el script anti-FOUC de color-mode y, en dev, el
+ * de devtools). Con `script-src 'self'` esos scripts se bloquean, el cliente
+ * nunca monta y **ningún botón de la app responde**.
+ *
+ * En vez de abrir `'unsafe-inline'` (que anula la protección XSS de
+ * `script-src`), se genera un nonce por request y se inyecta en cada script
+ * inline desde el hook `render:html` de Nitro (ver nuxt.config.ts).
+ */
+function generateNonce(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary)
+}
+
 // CSP completa para una aplicación Nuxt: SSR + API interna + assets locales.
-// `upgrade-insecure-requests` fuerza https cuando la conexión llega por http.
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-  'upgrade-insecure-requests',
-].join('; ')
+// Los scripts inline deben llevar el nonce del request; los assets propios
+// (`/_nuxt/…`) quedan cubiertos por `'self'`.
+const buildCsp = (nonce: string) =>
+  [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    'upgrade-insecure-requests',
+  ].join('; ')
 
 export default defineEventHandler((event) => {
+  const nonce = generateNonce()
+  // Se expone al renderizador para firmar los scripts inline (hook render:html).
+  event.context.nonce = nonce
+
   const headers: Record<string, string> = {
     'X-Frame-Options': 'DENY',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Content-Security-Policy': CSP,
+    'Content-Security-Policy': buildCsp(nonce),
   }
 
   // HSTS solo tiene sentido sobre HTTPS. En desarrollo local (http) se omite

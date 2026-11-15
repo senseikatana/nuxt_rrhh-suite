@@ -10,6 +10,19 @@ export default defineNuxtConfig({
     colorMode: true,
   },
 
+  // Iconos 100% locales.
+  //
+  // Por defecto @nuxt/icon resuelve los iconos que no encuentra en el bundle
+  // contra `api.iconify.design`. Eso rompe con la CSP (`connect-src 'self'`)
+  // y deja huecos donde debería haber icono. Con `serverBundle: 'local'` y
+  // `fallbackToApi: false` todo se sirve desde `@iconify-json/lucide`, que ya
+  // está instalado.
+  icon: {
+    serverBundle: 'local',
+    clientBundle: { scan: true, sizeLimitKb: 512 },
+    fallbackToApi: false,
+  },
+
   // Tema por defecto claro; el usuario puede cambiarlo desde el menú de usuario.
   // classSuffix vacío => la clase aplicada es `.dark` (coincide con main.css).
   colorMode: {
