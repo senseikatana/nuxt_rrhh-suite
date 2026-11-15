@@ -5,6 +5,7 @@ const { state, isAdmin, isManager, displayName } = useSession()
 const erpSession = useErpSession()
 const { t } = useI18nLite()
 const { sidebarCollapsed, toggleSidebar } = usePreferences()
+const { refresh: refreshAiStatus } = useAiStatus()
 const route = useRoute()
 
 /** Iconos por módulo ERP, para la sección del sidebar. */
@@ -109,6 +110,9 @@ async function loadPending() {
 // disponible desde el SSR (sin parpadeo). Si falla, simplemente no hay ERP.
 if (import.meta.server) {
   await erpSession.refresh()
+  // Precarga el estado del asistente para que el botón flotante salga ya en el
+  // HTML del servidor, sin aparecer un instante después de hidratar.
+  await refreshAiStatus()
 }
 
 onMounted(() => {
@@ -175,6 +179,9 @@ watch(
 
     <!-- Modal global de confirmación/prompt para toda la app. -->
     <DialogHost />
+
+    <!-- Asistente de contenido flotante (disponible en todas las páginas). -->
+    <AppAiLauncher />
 
     <!-- Drawer móvil -->
     <Transition
