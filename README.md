@@ -274,11 +274,40 @@ tests/e2e/        flujos completos de auth, vacaciones y fichaje
 Prueba la restauración al menos una vez al trimestre. Un backup que nunca se ha restaurado no es
 un backup.
 
-## Docker
+## Cloudflare Pages (Workers)
+
+El runtime usa el driver serverless de Neon (`@neondatabase/serverless`), así que la app corre
+igual en Node y en Workers.
 
 ```bash
-cp .env.example .env       # DATABASE_URL de Neon + secretos
-docker compose up -d --build
+bun run build:cloudflare      # NITRO_PRESET=cloudflare-pages → dist/
+npx wrangler pages deploy dist
+```
+
+- **Build command:** `bun run build:cloudflare`
+- **Output directory:** `dist`
+- **Compatibilidad:** `nodejs_compat` (ya declarado en `wrangler.jsonc`)
+
+Variables y secretos del proyecto (Settings → Environment variables):
+
+| Variable | Obligatoria | Nota |
+|---|---|---|
+| `DATABASE_URL` | sí | cadena **pooled** de Neon (`-pooler`) |
+| `BETTER_AUTH_SECRET` | sí | `openssl rand -base64 48` |
+| `BETTER_AUTH_URL` | sí | URL pública del deploy |
+| `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | para Storage | Neon Storage / S3 |
+| `SMTP_*` | no | ver aviso abajo |
+
+> ⚠️ **Email:** `nodemailer` usa SMTP por TCP y **no funciona en Workers**. En producción hay que
+> usar un proveedor HTTP (Resend, Postmark, Mailgun) o mover el envío fuera del Worker.
+
+### Docker (opcional)
+
+El `Dockerfile` sigue disponible para desplegar el build Node en cualquier host con contenedores:
+
+```bash
+docker build -t rrhh-suite .
+docker run --env-file .env -p 3000:3000 rrhh-suite
 ```
 
 La app aplica las migraciones al arrancar.
