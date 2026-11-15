@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { addDays, format, startOfWeek } from 'date-fns'
+import { es } from 'date-fns/locale'
 import type { BalanceResponse, LeaveRequestRow, LeaveType } from '~/types/api'
 
 const { state, isManager } = useSession()
@@ -38,6 +40,63 @@ const form = reactive({
 
 const submitting = ref(false)
 
+/**
+ * Modo de solicitud.
+ *
+ * `range`  → fechas sueltas (Desde/Hasta).
+ * `weeks`  → bloques de semana completa de lunes a viernes. Es como se piden
+ *            los 15 días de convenio: 3 semanas de 5 días, o 2 semanas (10).
+ */
+type RequestMode = 'range' | 'weeks'
+const mode = ref<RequestMode>('weeks')
+const selectedWeeks = ref<string[]>([])
+
+const WEEKS_AHEAD = 12
+
+/** Próximas semanas laborables (lunes a viernes), de la actual en adelante. */
+const upcomingWeeks = computed(() => {
+  const base = startOfWeek(new Date(), { weekStartsOn: 1 })
+  const today = todayIso()
+  const workweek = state.value?.settings.workweek ?? [1, 2, 3, 4, 5]
+  const vacationMode = state.value?.settings.vacationMode ?? 'natural'
+
+  return Array.from({ length: WEEKS_AHEAD }, (_, index) => {
+    const start = addDays(base, index * 7)
+    const end = addDays(start, 4)
+    const startIso = format(start, 'yyyy-MM-dd')
+    const endIso = format(end, 'yyyy-MM-dd')
+    const sameMonth = start.getMonth() === end.getMonth()
+    const label = sameMonth
+      ? `${format(start, 'd')}–${format(end, "d MMM", { locale: es })}`
+      : `${format(start, 'd MMM', { locale: es })} – ${format(end, 'd MMM', { locale: es })}`
+    return {
+      start: startIso,
+      end: endIso,
+      label,
+      days: countPreviewDays(startIso, endIso, vacationMode, holidayDates.value ?? [], workweek),
+    }
+  }).filter((week) => week.end >= today)
+})
+
+function toggleWeek(start: string) {
+  const index = selectedWeeks.value.indexOf(start)
+  if (index >= 0) selectedWeeks.value.splice(index, 1)
+  else selectedWeeks.value.push(start)
+}
+
+const selectedWeekDetails = computed(() =>
+  upcomingWeeks.value
+    .filter((week) => selectedWeeks.value.includes(week.start))
+    .sort((a, b) => a.start.localeCompare(b.start)),
+)
+
+const blockDays = computed(() =>
+  selectedWeekDetails.value.reduce((sum, week) => sum + week.days, 0),
+)
+
+/** Días que se van a solicitar según el modo activo. */
+const requestedDays = computed(() => (mode.value === 'weeks' ? blockDays.value : previewDays.value))
+
 watchEffect(() => {
   if (!form.leaveTypeId && types.value.length > 0) {
     form.leaveTypeId = types.value.find((type) => type.code === 'VAC')?.id ?? types.value[0]!.id
@@ -60,17 +119,14 @@ const previewDays = computed(() =>
 
 const availableAfter = computed(() => {
   if (!selectedBalance.value) return null
-  return Math.round((selectedBalance.value.availableDays - previewDays.value) * 100) / 100
+  return Math.round((selectedBalance.value.availableDays - requestedDays.value) * 100) / 100
 })
 
-const canSubmit = computed(
-  () =>
-    Boolean(form.leaveTypeId) &&
-    Boolean(form.startDate) &&
-    Boolean(form.endDate) &&
-    previewDays.value > 0 &&
-    !submitting.value,
-)
+const canSubmit = computed(() => {
+  if (!form.leaveTypeId || submitting.value) return false
+  if (mode.value === 'weeks') return blockDays.value > 0
+  return Boolean(form.startDate) && Boolean(form.endDate) && previewDays.value > 0
+})
 
 const activeRequests = computed(
   () => (requests.value ?? []).filter((request) => request.status !== 'cancelled'),
@@ -100,6 +156,43 @@ async function submit() {
   submitting.value = true
 
   try {
+    // Modo bloques: una solicitud por semana seleccionada (lunes a viernes).
+    if (mode.value === 'weeks') {
+      const weeks = selectedWeekDetails.value
+      if (!weeks.length) return
+
+      let days = 0
+      let created = 0
+
+      for (const week of weeks) {
+        const result = await $fetch<{ id: string; days: number; status: string }>(
+          '/api/leave/requests',
+          {
+            method: 'POST',
+            body: {
+              leaveTypeId: form.leaveTypeId,
+              startDate: week.start,
+              endDate: week.end,
+              reason: form.reason || undefined,
+            },
+          },
+        )
+        days += result.days
+        created += 1
+      }
+
+      toast.add({
+        title: 'Solicitud enviada',
+        description: `${days} día(s) en ${created} semana(s).`,
+        color: 'success',
+      })
+
+      selectedWeeks.value = []
+      form.reason = ''
+      await Promise.all([refreshBalance(), refreshRequests()])
+      return
+    }
+
     const result = await $fetch<{ id: string; days: number; status: string }>('/api/leave/requests', {
       method: 'POST',
       body: {
@@ -281,7 +374,39 @@ async function cancelRequest(id: string) {
             />
           </div>
 
-          <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-sm font-medium text-slate-700">¿Cómo quieres pedirlas?</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                class="tap-target rounded-xl border px-3 text-sm font-medium transition"
+                :class="
+                  mode === 'weeks'
+                    ? 'border-sky-500 bg-sky-50 text-sky-700'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                "
+                @click="mode = 'weeks'"
+              >
+                <UIcon name="i-lucide-calendar-range" class="size-4" />
+                Semanas de 5 días
+              </button>
+              <button
+                type="button"
+                class="tap-target rounded-xl border px-3 text-sm font-medium transition"
+                :class="
+                  mode === 'range'
+                    ? 'border-sky-500 bg-sky-50 text-sky-700'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                "
+                @click="mode = 'range'"
+              >
+                <UIcon name="i-lucide-calendar-days" class="size-4" />
+                Fechas sueltas
+              </button>
+            </div>
+          </div>
+
+          <div v-if="mode === 'range'" class="grid gap-3 sm:grid-cols-2">
             <div>
               <label class="mb-1.5 block text-sm font-medium text-slate-700">Desde</label>
               <input
@@ -300,6 +425,39 @@ async function cancelRequest(id: string) {
             </div>
           </div>
 
+          <div v-else class="space-y-2">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                v-for="week in upcomingWeeks"
+                :key="week.start"
+                type="button"
+                class="tap-target justify-between gap-2 rounded-xl border px-3 text-left text-sm transition"
+                :class="
+                  selectedWeeks.includes(week.start)
+                    ? 'border-sky-500 bg-sky-50 text-sky-800'
+                    : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                "
+                @click="toggleWeek(week.start)"
+              >
+                <span class="truncate font-medium">{{ week.label }}</span>
+                <span
+                  class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  :class="selectedWeeks.includes(week.start) ? 'bg-sky-200/60 text-sky-800' : 'bg-slate-100 text-slate-600'"
+                >
+                  {{ week.days }} d
+                </span>
+                <UIcon
+                  :name="selectedWeeks.includes(week.start) ? 'i-lucide-circle-check' : 'i-lucide-circle'"
+                  class="size-4 shrink-0"
+                />
+              </button>
+            </div>
+            <p class="text-xs leading-relaxed text-slate-500">
+              {{ selectedWeeks.length }} semana(s) · {{ blockDays }} días seleccionados.
+              Tres semanas son los 15 días de convenio; dos semanas, 10 días.
+            </p>
+          </div>
+
           <div>
             <label class="mb-1.5 block text-sm font-medium text-slate-700">Motivo (opcional)</label>
             <UTextarea v-model="form.reason" :rows="2" placeholder="Vacaciones de verano…" class="w-full" />
@@ -308,7 +466,7 @@ async function cancelRequest(id: string) {
           <div class="rounded-xl bg-slate-50 p-4">
             <div class="flex items-center justify-between text-sm">
               <span class="text-slate-500">Días solicitados</span>
-              <span class="font-semibold text-slate-900">{{ previewDays }}</span>
+              <span class="font-semibold text-slate-900">{{ requestedDays }}</span>
             </div>
             <div v-if="availableAfter !== null" class="mt-2 flex items-center justify-between text-sm">
               <span class="text-slate-500">Saldo después</span>

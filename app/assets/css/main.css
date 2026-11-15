@@ -91,3 +91,68 @@ html.dark {
 .scrollbar-thin {
   scrollbar-width: thin;
 }
+
+/* ------------------------------------------------------------------ */
+/* Ergonomía táctil                                                    */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Regla base para punteros gruesos (móvil/tablet): todo control interactivo
+ * mide al menos 44x44 px, que es el mínimo recomendado por WCAG 2.5.5 y por
+ * la HIG de Apple. Sin esto los botones de icono y los selects quedan por
+ * debajo del dedo y se falla el toque.
+ */
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  select,
+  textarea,
+  input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
+  nav a,
+  /* Botones de Nuxt UI renderizados como enlace (UButton to="…"). */
+  a[data-slot='base'],
+  button[data-slot='base'] {
+    min-height: 44px;
+  }
+
+  a[data-slot='base'],
+  button[data-slot='base'] {
+    min-width: 44px;
+  }
+
+  /* Evita el retardo de 300 ms y el resaltado azul al tocar. */
+  button,
+  [role='button'],
+  a,
+  select,
+  input,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Separación mínima entre objetivos contiguos. */
+  nav a + a,
+  button + button {
+    margin-left: 2px;
+  }
+}
+
+/* Utilidad explícita para zonas de toque grandes (chips, celdas, acciones). */
+.tap-target {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* En pantallas pequeñas la acción principal ocupa todo el ancho. */
+@media (max-width: 640px) {
+  .tap-block {
+    display: flex;
+    width: 100%;
+  }
+}
+

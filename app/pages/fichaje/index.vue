@@ -284,6 +284,7 @@ function exportRegister() {
 
         <UButton
           size="xl"
+          class="tap-block justify-center text-base"
           :color="status?.jornadaComplete ? 'neutral' : nextDirection === 'in' ? 'success' : 'error'"
           :icon="
             status?.jornadaComplete

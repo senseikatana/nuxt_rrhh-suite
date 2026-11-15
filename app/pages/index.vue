@@ -366,7 +366,10 @@ async function approveRequest(id: string) {
       <div v-if="isManager" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-slate-900">Pendientes de aprobar</h2>
-          <NuxtLink to="/vacaciones/aprobaciones" class="text-xs font-medium text-sky-600 hover:text-sky-700">
+          <NuxtLink
+            to="/vacaciones/aprobaciones"
+            class="tap-target text-xs font-medium text-sky-600 hover:text-sky-700"
+          >
             Ver todas
           </NuxtLink>
         </div>
@@ -463,7 +466,10 @@ async function approveRequest(id: string) {
           <h2 class="text-sm font-semibold text-slate-900">Equipo fuera hoy</h2>
           <p class="text-xs text-slate-500">Ausencias aprobadas que cubren la fecha de hoy.</p>
         </div>
-        <NuxtLink to="/vacaciones/calendario" class="text-xs font-medium text-sky-600 hover:text-sky-700">
+        <NuxtLink
+          to="/vacaciones/calendario"
+          class="tap-target text-xs font-medium text-sky-600 hover:text-sky-700"
+        >
           Abrir calendario anual
         </NuxtLink>
       </div>

@@ -26,7 +26,9 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   vacationMode: 'natural',
   annualVacationDays: 30,
   carryOverCap: 0,
-  minNoticeDays: 15,
+  // Sin antelación mínima por defecto: la política de cada empresa se ajusta
+  // en Ajustes. Un mínimo alto bloquea peticiones legítimas de corto plazo.
+  minNoticeDays: 0,
   workweek: [...DEFAULT_WORKWEEK],
   overtimeHoursPerDay: 8,
   attendanceToleranceMinutes: 5,

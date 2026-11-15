@@ -149,7 +149,7 @@ watch(
       >
         <button
           type="button"
-          class="rounded-xl border border-slate-200 p-2 text-slate-600"
+          class="tap-target rounded-xl border border-slate-200 text-slate-600"
           @click="mobileOpen = true"
         >
           <UIcon name="i-lucide-menu" class="size-5" />
@@ -160,7 +160,7 @@ watch(
         </div>
         <NuxtLink
           to="/vacaciones"
-          class="rounded-xl bg-slate-900 p-2 text-white"
+          class="tap-target rounded-xl bg-slate-900 text-white"
           title="Solicitar vacaciones"
         >
           <UIcon name="i-lucide-plus" class="size-5" />
