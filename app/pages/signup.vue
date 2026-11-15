@@ -58,7 +58,10 @@ async function submit() {
     error.value =
       fetchError?.data?.code === 'USER_ALREADY_EXISTS'
         ? 'Ya existe una cuenta con ese email. Prueba a iniciar sesión.'
-        : (fetchError?.data?.message ?? 'No se ha podido crear la cuenta. Inténtalo de nuevo.')
+        : fetchError?.data?.code === 'INVALID_ORIGIN' ||
+            fetchError?.data?.message === 'Invalid origin'
+          ? 'Este dominio no está autorizado. Abre la app desde localhost o añade el dominio a BETTER_AUTH_TRUSTED_ORIGINS.'
+          : (fetchError?.data?.message ?? 'No se ha podido crear la cuenta. Inténtalo de nuevo.')
   } finally {
     loading.value = false
   }
@@ -66,7 +69,7 @@ async function submit() {
 </script>
 
 <template>
-  <AuthShell title="Crea tu cuenta" subtitle="Regístrate con tu email corporativo.">
+  <AuthShell title="Crea tu cuenta" subtitle="Regístrate con tu email personal o corporativo.">
     <div
       v-if="done"
       class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center"
@@ -106,7 +109,7 @@ async function submit() {
           type="email"
           autocomplete="email"
           icon="i-lucide-mail"
-          placeholder="tu@empresa.com"
+          placeholder="tu@email.com"
           size="lg"
           class="w-full"
         />

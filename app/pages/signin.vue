@@ -38,8 +38,11 @@ async function submit() {
     error.value =
       fetchError?.data?.code === 'EMAIL_NOT_VERIFIED'
         ? 'Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.'
-        : (fetchError?.data?.message ??
-          'No se ha podido iniciar sesión. Revisa el email y la contraseña.')
+        : fetchError?.data?.code === 'INVALID_ORIGIN' ||
+            fetchError?.data?.message === 'Invalid origin'
+          ? 'Este dominio no está autorizado. Abre la app desde localhost o añade el dominio a BETTER_AUTH_TRUSTED_ORIGINS.'
+          : (fetchError?.data?.message ??
+            'No se ha podido iniciar sesión. Revisa el email y la contraseña.')
   } finally {
     loading.value = false
   }

@@ -15,7 +15,18 @@
  * better-auth; la capa de cookies es la responsable de SameSite/Secure.
  */
 
+import { isTrustedOrigin } from '../utils/allowed-origins'
+
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+/** Parsea un Origin/Referer; `null` si no es una URL válida. */
+function parseOrigin(value: string): URL | null {
+  try {
+    return new URL(value)
+  } catch {
+    return null
+  }
+}
 
 /**
  * Nonce CSP por request.
@@ -83,21 +94,19 @@ export default defineEventHandler((event) => {
   if (SAFE_METHODS.has(method)) return
 
   // En same-origin puede no llegar Origin (peticiones de mismo origen a veces
-  // solo mandan Referer). Se acepta cuando coincide con el host propio.
+  // solo mandan Referer). Se acepta cuando coincide con el host propio o con
+  // el host reenviado por un proxy/túnel.
   const host = getRequestHeader(event, 'host')
-  if (!host) return
-
+  const forwardedHost = getRequestHeader(event, 'x-forwarded-host')
   const origin = getRequestHeader(event, 'origin') || getRequestHeader(event, 'referer')
   if (!origin) return
 
-  let originHost: string | null
-  try {
-    originHost = new URL(origin).host
-  } catch {
-    originHost = null
-  }
+  const originUrl = parseOrigin(origin)
+  const sameHost =
+    originUrl !== null &&
+    (originUrl.host === host || (forwardedHost ? originUrl.host === forwardedHost : false))
 
-  if (originHost !== host) {
+  if (!sameHost && !(originUrl && isTrustedOrigin(originUrl.origin))) {
     throw createError({ statusCode: 403, statusMessage: 'Cross-origin request rejected' })
   }
 })

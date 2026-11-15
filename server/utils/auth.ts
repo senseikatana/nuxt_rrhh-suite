@@ -4,6 +4,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import * as schema from '../database/schema'
 import { useDb } from './db'
 import { sendAuthEmail } from './auth-email'
+import { configuredOrigins, isDevelopment, isLocalOrigin } from './allowed-origins'
 
 function createAuth() {
   const config = useRuntimeConfig()
@@ -11,15 +12,21 @@ function createAuth() {
   const requireVerification = process.env.AUTH_REQUIRE_EMAIL_VERIFICATION === 'true'
   const sendVerificationOnSignUp = process.env.AUTH_SEND_VERIFICATION_ON_SIGNUP === 'true'
 
-  const extraOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-
   return betterAuth({
     baseURL: config.betterAuthUrl,
     secret: config.betterAuthSecret,
-    trustedOrigins: [config.betterAuthUrl, ...extraOrigins],
+    // Lista dinámica: incluye BETTER_AUTH_URL, BETTER_AUTH_TRUSTED_ORIGINS y,
+    // en desarrollo, localhost/127.0.0.1/[::1] y la propia IP de la red local
+    // desde la que se abra la app. Es lo que evita el "Invalid origin" al
+    // crear cuentas entrando por 127.0.0.1 o por la LAN.
+    trustedOrigins: (request) => {
+      const origins = configuredOrigins()
+      const requestOrigin = request?.headers.get('origin')
+      if (requestOrigin && isDevelopment() && isLocalOrigin(requestOrigin)) {
+        origins.push(requestOrigin.replace(/\/+$/, ''))
+      }
+      return origins
+    },
 
     database: drizzleAdapter(useDb(), {
       provider: 'pg',
