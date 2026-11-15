@@ -47,7 +47,7 @@ const sections = computed<NavSection[]>(() => [
         ? [{ label: t('empleados'), to: '/empleados', icon: 'i-lucide-users' }]
         : []),
       { label: t('fichaje'), to: '/fichaje', icon: 'i-lucide-clock' },
-      { label: t('turnos'), to: '/turnos', icon: 'i-lucide-calendar-range', phase: 'F2' },
+      { label: t('turnos'), to: '/turnos', icon: 'i-lucide-calendar-range' },
     ],
   },
   {
