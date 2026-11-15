@@ -6,6 +6,28 @@ import type { DepartmentRow, EmployeeRow, ImportResult } from '~/types/api'
 const { isAdmin } = useSession()
 const requestFetch = useRequestFetch()
 const toast = useToast()
+const { confirm } = useDialogs()
+
+const editing = ref<EmployeeRow | null>(null)
+const savingEdit = ref(false)
+const editForm = reactive({
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  position: '',
+  departmentId: '',
+  startDate: '',
+  weeklyHours: 40,
+  active: true,
+})
+
+const editOpen = computed({
+  get: () => Boolean(editing.value),
+  set: (value: boolean) => {
+    if (!value) editing.value = null
+  },
+})
 
 const year = new Date().getFullYear()
 const search = ref('')
@@ -14,13 +36,10 @@ const importing = ref(false)
 const importResult = ref<ImportResult | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 
-const { data: employees, refresh } = await useAsyncData<EmployeeRow[]>('employees-page', () =>
-  requestFetch('/api/employees'),
-)
-
-const { data: departments } = await useAsyncData<DepartmentRow[]>('employees-departments', () =>
-  requestFetch('/api/departments'),
-)
+const [{ data: employees, refresh }, { data: departments }] = await Promise.all([
+  useAsyncData<EmployeeRow[]>('employees-page', () => requestFetch('/api/employees')),
+  useAsyncData<DepartmentRow[]>('employees-departments', () => requestFetch('/api/departments')),
+])
 
 const filtered = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -103,6 +122,75 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
   if (role === 'manager') return 'info'
   return 'neutral'
 }
+
+function openEdit(employee: EmployeeRow) {
+  editing.value = employee
+  editForm.firstName = employee.firstName
+  editForm.lastName = employee.lastName
+  editForm.email = employee.email
+  editForm.phone = employee.phone ?? ''
+  editForm.position = employee.position ?? ''
+  editForm.departmentId = employee.departmentId ?? ''
+  editForm.startDate = employee.startDate
+  editForm.weeklyHours = employee.weeklyHours
+  editForm.active = employee.active
+}
+
+async function saveEdit() {
+  if (!editing.value) return
+  savingEdit.value = true
+  try {
+    await $fetch(`/api/employees/${editing.value.id}`, {
+      method: 'PATCH',
+      body: {
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim(),
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim() || null,
+        position: editForm.position.trim() || null,
+        departmentId: editForm.departmentId || null,
+        startDate: editForm.startDate,
+        weeklyHours: Number(editForm.weeklyHours),
+        active: editForm.active,
+      },
+    })
+    toast.add({ title: 'Empleado actualizado', color: 'success' })
+    editing.value = null
+    await Promise.all([refresh(), refreshNuxtData('employees-departments')])
+  } catch (caught) {
+    const error = caught as { data?: { message?: string }; statusMessage?: string }
+    toast.add({
+      title: 'No se pudo guardar',
+      description: error?.data?.message ?? error?.statusMessage ?? 'Revisa los datos',
+      color: 'error',
+    })
+  } finally {
+    savingEdit.value = false
+  }
+}
+
+async function deactivate(employee: EmployeeRow) {
+  const ok = await confirm({
+    title: 'Dar de baja al empleado',
+    description: `${employee.firstName} ${employee.lastName} dejará de estar activo. Se conserva su histórico de fichajes, vacaciones y nóminas.`,
+    danger: true,
+    confirmLabel: 'Dar de baja',
+  })
+  if (!ok) return
+
+  try {
+    await $fetch(`/api/employees/${employee.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Empleado dado de baja', color: 'success' })
+    await refresh()
+  } catch (caught) {
+    const error = caught as { data?: { message?: string }; statusMessage?: string }
+    toast.add({
+      title: 'No se pudo dar de baja',
+      description: error?.data?.message ?? error?.statusMessage,
+      color: 'error',
+    })
+  }
+}
 </script>
 
 <template>
@@ -178,6 +266,7 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
             <th class="px-4 py-3 font-semibold">Horas</th>
             <th class="px-4 py-3 font-semibold">PIN</th>
             <th class="px-4 py-3 font-semibold">Acceso</th>
+            <th class="px-4 py-3 text-right font-semibold">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
@@ -190,6 +279,9 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
                 <div>
                   <p class="font-medium text-slate-900">
                     {{ employee.firstName }} {{ employee.lastName }}
+                    <UBadge v-if="!employee.active" color="neutral" variant="subtle" size="xs">
+                      Baja
+                    </UBadge>
                   </p>
                   <p class="text-xs text-slate-500">{{ employee.email }}</p>
                 </div>
@@ -212,6 +304,29 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
               <UBadge :color="roleColor(employee.role)" variant="subtle" size="sm">
                 {{ roleLabel(employee.role) }}
               </UBadge>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-end gap-1">
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-pencil"
+                  aria-label="Editar empleado"
+                  title="Editar"
+                  @click="openEdit(employee)"
+                />
+                <UButton
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  icon="i-lucide-user-x"
+                  aria-label="Dar de baja"
+                  title="Dar de baja"
+                  :disabled="!employee.active"
+                  @click="deactivate(employee)"
+                />
+              </div>
             </td>
           </tr>
         </tbody>
@@ -248,5 +363,69 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
         </UButton>
       </div>
     </div>
+
+    <UModal v-model:open="editOpen" title="Editar empleado">
+      <template #body>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Nombre</label>
+            <UInput v-model="editForm.firstName" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Apellidos</label>
+            <UInput v-model="editForm.lastName" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Email</label>
+            <UInput v-model="editForm.email" type="email" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Teléfono</label>
+            <UInput v-model="editForm.phone" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Puesto</label>
+            <UInput v-model="editForm.position" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Departamento</label>
+            <select
+              v-model="editForm.departmentId"
+              class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              <option value="">Sin departamento</option>
+              <option
+                v-for="department in departments ?? []"
+                :key="department.id"
+                :value="department.id"
+              >
+                {{ department.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Fecha de alta</label>
+            <UInput v-model="editForm.startDate" type="date" class="w-full" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Horas semanales</label>
+            <UInput v-model.number="editForm.weeklyHours" type="number" min="0" max="60" class="w-full" />
+          </div>
+          <div class="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 sm:col-span-2">
+            <div>
+              <p class="text-sm font-medium text-slate-800">Empleado activo</p>
+              <p class="text-xs text-slate-500">Desactívalo para reflejar una baja sin borrar el histórico.</p>
+            </div>
+            <USwitch v-model="editForm.active" />
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="editOpen = false">Cancelar</UButton>
+          <UButton :loading="savingEdit" icon="i-lucide-save" @click="saveEdit">Guardar</UButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

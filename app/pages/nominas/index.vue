@@ -77,8 +77,9 @@ async function loadPeriods() {
   error.value = ''
   try {
     periods.value = await $fetch<PayrollPeriod[]>('/api/payroll/periods')
-    if (!selectedPeriodId.value && periods.value.length) {
-      selectedPeriodId.value = periods.value[0].id
+    const firstPeriod = periods.value[0]
+    if (!selectedPeriodId.value && firstPeriod) {
+      selectedPeriodId.value = firstPeriod.id
     }
     if (selectedPeriodId.value) await loadPayslips(selectedPeriodId.value)
   } catch (e) {
@@ -175,6 +176,43 @@ async function savePayslip() {
 const selectedPeriod = computed(() =>
   periods.value.find((period) => period.id === selectedPeriodId.value) ?? null,
 )
+
+async function removePeriod(period: PayrollPeriod) {
+  const ok = await confirm({
+    title: 'Eliminar periodo',
+    description: `Se borrarán ${period.employeeCount} nómina(s) de ${periodLabel(period)}. Solo se pueden borrar periodos abiertos.`,
+    danger: true,
+    confirmLabel: 'Eliminar periodo',
+  })
+  if (!ok) return
+
+  try {
+    await $fetch(`/api/payroll/periods/${period.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Periodo eliminado', color: 'success' })
+    if (selectedPeriodId.value === period.id) selectedPeriodId.value = null
+    await loadPeriods()
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
+
+async function removePayslip(slip: Payslip) {
+  const ok = await confirm({
+    title: 'Eliminar nómina',
+    description: `Se borrará la nómina de ${slip.employeeName} (${periodLabel(slip)}).`,
+    danger: true,
+    confirmLabel: 'Eliminar',
+  })
+  if (!ok) return
+
+  try {
+    await $fetch(`/api/payroll/payslips/${slip.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Nómina eliminada', color: 'success' })
+    await loadPeriods()
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
 
 onMounted(async () => {
   await Promise.all([loadPeriods(), loadEmployees()])
@@ -291,6 +329,17 @@ onMounted(async () => {
           >
             Cerrar
           </UButton>
+          <UButton
+            v-if="period.canManage && period.status === 'open'"
+            size="xs"
+            color="error"
+            variant="ghost"
+            class="mt-2 ml-1"
+            icon="i-lucide-trash-2"
+            aria-label="Eliminar periodo"
+            title="Eliminar periodo"
+            @click.stop="removePeriod(period)"
+          />
         </button>
       </div>
 
@@ -319,6 +368,7 @@ onMounted(async () => {
               <th class="px-4 py-2 font-medium">Departamento</th>
               <th class="px-4 py-2 text-right font-medium">Bruto</th>
               <th class="px-4 py-2 text-right font-medium">Neto</th>
+              <th class="px-4 py-2 text-right font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -327,6 +377,19 @@ onMounted(async () => {
               <td class="px-4 py-2.5 text-slate-500">{{ slip.departmentName ?? '—' }}</td>
               <td class="px-4 py-2.5 text-right text-slate-700">{{ formatCurrency(slip.gross) }}</td>
               <td class="px-4 py-2.5 text-right font-medium text-slate-900">{{ formatCurrency(slip.net) }}</td>
+              <td class="px-4 py-2.5 text-right">
+                <UButton
+                  v-if="selectedPeriod?.status === 'open' && selectedPeriod?.canManage"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  icon="i-lucide-trash-2"
+                  aria-label="Eliminar nómina"
+                  title="Eliminar nómina"
+                  @click="removePayslip(slip)"
+                />
+                <span v-else class="text-xs text-slate-300">—</span>
+              </td>
             </tr>
           </tbody>
         </table>

@@ -83,7 +83,8 @@ async function loadJobs() {
   error.value = ''
   try {
     jobs.value = await $fetch<Job[]>('/api/recruitment/jobs')
-    if (!selectedJobId.value && jobs.value.length) selectedJobId.value = jobs.value[0].id
+    const firstJob = jobs.value[0]
+    if (!selectedJobId.value && firstJob) selectedJobId.value = firstJob.id
     if (selectedJobId.value) await loadCandidates(selectedJobId.value)
   } catch (e) {
     error.value = errorMessage(e)
@@ -198,6 +199,44 @@ async function moveStage(candidate: Candidate, stage: Candidate['stage']) {
     })
     candidate.stage = stage
     toast.add({ title: 'Etapa actualizada', color: 'success' })
+    await loadJobs()
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
+
+async function removeJob(job: Job) {
+  const ok = await confirm({
+    title: 'Eliminar oferta',
+    description: `Se borrará "${job.title}" junto con sus ${job.candidateCount} candidatura(s).`,
+    danger: true,
+    confirmLabel: 'Eliminar oferta',
+  })
+  if (!ok) return
+
+  try {
+    await $fetch(`/api/recruitment/jobs/${job.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Oferta eliminada', color: 'success' })
+    selectedJobId.value = null
+    await loadJobs()
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
+
+async function removeCandidate(candidate: Candidate) {
+  const ok = await confirm({
+    title: 'Eliminar candidatura',
+    description: `Se borrará la candidatura de ${candidate.name}.`,
+    danger: true,
+    confirmLabel: 'Eliminar',
+  })
+  if (!ok) return
+
+  try {
+    await $fetch(`/api/recruitment/candidates/${candidate.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Candidatura eliminada', color: 'success' })
+    if (selectedJobId.value) await loadCandidates(selectedJobId.value)
     await loadJobs()
   } catch (e) {
     toast.add({ title: errorMessage(e), color: 'error' })
@@ -322,6 +361,15 @@ onMounted(async () => {
               >
                 Cerrar
               </UButton>
+              <UButton
+                size="xs"
+                color="error"
+                variant="ghost"
+                icon="i-lucide-trash-2"
+                aria-label="Eliminar oferta"
+                title="Eliminar oferta"
+                @click="removeJob(selectedJob)"
+              />
             </div>
           </div>
         </div>
@@ -361,13 +409,24 @@ onMounted(async () => {
                 <p class="truncate text-xs text-slate-500">{{ candidate.email }}<span v-if="candidate.phone"> · {{ candidate.phone }}</span></p>
                 <p v-if="candidate.notes" class="mt-1 text-xs text-slate-500">{{ candidate.notes }}</p>
               </div>
-              <select
-                :value="candidate.stage"
-                class="rounded-lg border border-slate-300 px-2 py-1 text-xs"
-                @change="moveStage(candidate, ($event.target as HTMLSelectElement).value as Candidate['stage'])"
-              >
-                <option v-for="stage in stages" :key="stage.value" :value="stage.value">{{ stage.label }}</option>
-              </select>
+              <div class="flex items-center gap-1">
+                <select
+                  :value="candidate.stage"
+                  class="rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                  @change="moveStage(candidate, ($event.target as HTMLSelectElement).value as Candidate['stage'])"
+                >
+                  <option v-for="stage in stages" :key="stage.value" :value="stage.value">{{ stage.label }}</option>
+                </select>
+                <UButton
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  icon="i-lucide-trash-2"
+                  aria-label="Eliminar candidatura"
+                  title="Eliminar candidatura"
+                  @click="removeCandidate(candidate)"
+                />
+              </div>
             </li>
           </ul>
         </div>

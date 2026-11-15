@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { reactive } from 'vue'
+
 const requestFetch = useRequestFetch()
 const toast = useToast()
 
@@ -27,6 +29,10 @@ interface AuditRow {
 }
 
 const year = new Date().getFullYear()
+
+const { isAdmin, refresh: refreshSession } = useSession()
+const { prompt } = useDialogs()
+const purging = ref(false)
 
 const { data: settings, refresh } = await useAsyncData<OrgSettingsResponse>('settings-page', () =>
   requestFetch('/api/settings'),
@@ -57,6 +63,15 @@ const form = reactive({
   extraDays: 1,
   maxExtraDays: 5,
   logoUrl: '',
+})
+
+// `v-model` sobre un objeto `reactive` con una prop string dispara un falso
+// positivo de vue-tsc; un computed escribible mantiene el mismo estado.
+const logoUrl = computed({
+  get: () => form.logoUrl,
+  set: (value: string) => {
+    form.logoUrl = value
+  },
 })
 
 const hydrated = ref(false)
@@ -158,6 +173,53 @@ async function save() {
     })
   } finally {
     saving.value = false
+  }
+}
+
+/**
+ * Purga de datos de demostración antes de entregar a una empresa.
+ * Exige escribir PURGAR: es irreversible.
+ */
+async function purgeDemoData() {
+  const answer = await prompt({
+    title: 'Purgar datos de ejemplo',
+    description:
+      'Se borrarán plantilla, fichajes, vacaciones, gastos, nóminas, reclutamiento, denuncias, contenido editable y datos ERP. Se conservan usuarios, empresa, configuración, tipos de permiso y festivos. No se puede deshacer.',
+    label: 'Escribe PURGAR para confirmar',
+    placeholder: 'PURGAR',
+    required: true,
+    danger: true,
+    confirmLabel: 'Purgar datos',
+  })
+
+  if (answer === null) return
+  if (answer.trim() !== 'PURGAR') {
+    toast.add({ title: 'Confirmación incorrecta', description: 'Escribe PURGAR exactamente.', color: 'error' })
+    return
+  }
+
+  purging.value = true
+  try {
+    const result = await $fetch<{ counts: Record<string, number> }>('/api/admin/purge', {
+      method: 'POST',
+      body: { confirm: 'PURGAR' },
+    })
+    const total = Object.values(result.counts).reduce((sum, value) => sum + value, 0)
+    toast.add({
+      title: 'Datos de ejemplo purgados',
+      description: `${total} registro(s) eliminados. La instalación queda limpia para entrega.`,
+      color: 'success',
+    })
+    await Promise.all([refreshNuxtData(), refreshSession()])
+  } catch (caught) {
+    const error = caught as { data?: { message?: string }; statusMessage?: string }
+    toast.add({
+      title: 'No se pudo purgar',
+      description: error?.data?.message ?? error?.statusMessage,
+      color: 'error',
+    })
+  } finally {
+    purging.value = false
   }
 }
 </script>
@@ -341,7 +403,11 @@ async function save() {
         </div>
         <div class="flex-1">
           <label class="mb-1.5 block text-sm font-medium text-slate-700">URL del logo</label>
-          <UInput v-model="form.logoUrl" placeholder="/branding/logo.png o https://…" class="w-full" />
+          <UInput
+            v-model="logoUrl"
+            placeholder="/branding/logo.png o https://…"
+            class="w-full"
+          />
           <p class="mt-1 text-xs text-slate-400">
             Ruta local (por ejemplo /branding/fundacio-onada.png) o URL absoluta.
           </p>
@@ -389,6 +455,30 @@ async function save() {
           </div>
         </div>
         <p v-else class="mt-4 text-sm text-slate-500">Todavía no hay eventos registrados.</p>
+      </div>
+    </div>
+
+    <!-- Preparación de entrega: limpiar datos de ejemplo -->
+    <div v-if="isAdmin" class="rounded-2xl border border-rose-200 bg-rose-50/70 p-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="max-w-2xl">
+          <h2 class="text-sm font-semibold text-rose-900">Purga de datos de ejemplo</h2>
+          <p class="mt-1 text-sm text-rose-800">
+            Deja la instalación lista para entregar: borra plantilla, fichajes, vacaciones,
+            gastos, nóminas, reclutamiento, denuncias, contenido editable y datos ERP.
+            <strong>Conserva</strong> usuarios, empresa, configuración, tipos de permiso y
+            festivos para que se pueda seguir entrando y operando.
+          </p>
+          <p class="mt-1 text-xs text-rose-700">Acción irreversible. Queda registrada en auditoría.</p>
+        </div>
+        <UButton
+          color="error"
+          icon="i-lucide-trash-2"
+          :loading="purging"
+          @click="purgeDemoData"
+        >
+          Purgar datos de ejemplo
+        </UButton>
       </div>
     </div>
   </div>

@@ -86,9 +86,12 @@ async function lookup() {
   trackError.value = ''
   trackResult.value = null
   try {
-    trackResult.value = await $fetch('/api/whistle/track', {
-      query: { code: lookupCode.value.trim().toUpperCase() },
-    })
+    trackResult.value = await $fetch<{ report: WhistleReport; messages: WhistleMessage[] }>(
+      '/api/whistle/track',
+      {
+        query: { code: lookupCode.value.trim().toUpperCase() },
+      },
+    )
   } catch (e) {
     trackError.value = errorMessage(e)
   } finally {
@@ -142,6 +145,24 @@ async function updateStatus(report: WhistleReport, status: WhistleReport['status
     await $fetch(`/api/whistle/${report.id}`, { method: 'PATCH', body: { status } })
     report.status = status
     toast.add({ title: 'Estado actualizado', color: 'success' })
+  } catch (e) {
+    toast.add({ title: errorMessage(e), color: 'error' })
+  }
+}
+
+async function removeReport(report: WhistleReport) {
+  const ok = await confirm({
+    title: 'Eliminar denuncia',
+    description: `Se borrará el caso ${report.trackingCode} y todo su hilo de mensajes.`,
+    danger: true,
+    confirmLabel: 'Eliminar',
+  })
+  if (!ok) return
+
+  try {
+    await $fetch(`/api/whistle/${report.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Denuncia eliminada', color: 'success' })
+    await loadReports()
   } catch (e) {
     toast.add({ title: errorMessage(e), color: 'error' })
   }
@@ -348,6 +369,15 @@ onMounted(loadReports)
               <UButton size="xs" variant="soft" color="neutral" icon="i-lucide-reply" @click="replyFromManagement(report)">
                 Responder
               </UButton>
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="error"
+                icon="i-lucide-trash-2"
+                aria-label="Eliminar denuncia"
+                title="Eliminar denuncia"
+                @click="removeReport(report)"
+              />
             </div>
           </div>
           <p class="mt-3 whitespace-pre-line text-sm text-slate-700">{{ report.description }}</p>
