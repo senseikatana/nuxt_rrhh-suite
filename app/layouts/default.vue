@@ -55,33 +55,39 @@ const sections = computed<NavSection[]>(() => [
   {
     title: t('nav.secGestion'),
     items: [
+      // Autoservicio: cualquier persona ve lo suyo.
       { label: t('nav.gastos'), to: localePath('/gastos'), icon: 'i-lucide-receipt' },
       { label: t('nav.nominas'), to: localePath('/nominas'), icon: 'i-lucide-banknote' },
-      { label: t('nav.reclutamiento'), to: localePath('/reclutamiento'), icon: 'i-lucide-user-plus' },
       { label: t('nav.denuncias'), to: localePath('/denuncias'), icon: 'i-lucide-shield-check' },
-      { label: t('nav.asistente'), to: localePath('/asistente'), icon: 'i-lucide-sparkles' },
+      // Gestión de personas: solo mandos y administración.
+      ...(isManager.value
+        ? [
+            {
+              label: t('nav.reclutamiento'),
+              to: localePath('/reclutamiento'),
+              icon: 'i-lucide-user-plus',
+            },
+            {
+              label: t('nav.asistente'),
+              to: localePath('/asistente'),
+              icon: 'i-lucide-sparkles',
+            },
+          ]
+        : []),
     ],
   },
   // Sección ERP: visible solo para quien tiene un rol ERP (grant en
-  // user_company_access). Los módulos se filtran por ese rol.
+  // user_company_access). Los módulos se filtran por ese rol y se enlazan por
+  // nombre de ruta para que la URL se traduzca (/erp/ventas, /erp/sales…).
   ...(erpSession.navigation.value.length
     ? [
         {
           title: t('nav.secErp'),
-          items: [
-            {
-              label: t('nav.erpPanel'),
-              to: localePath('/erp'),
-              icon: 'i-lucide-layout-grid',
-            },
-            ...erpSession.navigation.value
-              .filter((entry) => entry.key !== 'dashboard')
-              .map((entry) => ({
-                label: t(`nav.${entry.key}`),
-                to: localePath(entry.to),
-                icon: ERP_NAV_ICONS[entry.key] ?? 'i-lucide-box',
-              })),
-          ],
+          items: erpSession.navigation.value.map((entry) => ({
+            label: t(`nav.${entry.key}`),
+            to: localePath({ name: entry.routeName }),
+            icon: ERP_NAV_ICONS[entry.key] ?? 'i-lucide-box',
+          })),
         },
       ]
     : []),
@@ -110,10 +116,8 @@ async function loadPending() {
 // La sesión ERP se resuelve en el setup para que la sección del sidebar esté
 // disponible desde el SSR (sin parpadeo). Si falla, simplemente no hay ERP.
 if (import.meta.server) {
-  await erpSession.refresh()
-  // Precarga el estado del asistente para que el botón flotante salga ya en el
-  // HTML del servidor, sin aparecer un instante después de hidratar.
-  await refreshAiStatus()
+  // Ambas consultas son independientes: en paralelo se evita sumar latencia.
+  await Promise.all([erpSession.refresh(), refreshAiStatus()])
 }
 
 onMounted(() => {

@@ -65,14 +65,43 @@ export function useErpSession() {
   /** Visibilidad de módulos por rol. */
   const navigation = computed(() => {
     const current = role.value
-    const all: { key: string; to: string; label: string; roles: ErpRole[] }[] = [
-      { key: 'dashboard', to: '/erp', label: 'Panel', roles: ['admin', 'buyer', 'logistics', 'quality'] },
-      { key: 'sales', to: '/erp/sales', label: 'Ventas', roles: ['admin', 'buyer', 'logistics'] },
-      { key: 'purchases', to: '/erp/purchases', label: 'Compras', roles: ['admin', 'buyer', 'logistics', 'quality'] },
-      { key: 'warehouse', to: '/erp/warehouse', label: 'Almacén', roles: ['admin', 'logistics'] },
-      { key: 'demand', to: '/erp/demand', label: 'Demanda', roles: ['admin', 'buyer'] },
-      { key: 'routes', to: '/erp/routes', label: 'Rutas', roles: ['admin', 'logistics'] },
-      { key: 'activity', to: '/erp/activity', label: 'Actividad', roles: ['admin', 'buyer', 'logistics', 'quality'] },
+    const all: { key: string; routeName: string; label: string; roles: ErpRole[] }[] = [
+      {
+        key: 'sales',
+        routeName: 'erp-sales',
+        label: 'Ventas',
+        roles: ['admin', 'buyer', 'logistics'],
+      },
+      {
+        key: 'purchases',
+        routeName: 'erp-purchases',
+        label: 'Compras',
+        roles: ['admin', 'buyer', 'logistics', 'quality'],
+      },
+      {
+        key: 'warehouse',
+        routeName: 'erp-warehouse',
+        label: 'Almacén',
+        roles: ['admin', 'logistics'],
+      },
+      {
+        key: 'demand',
+        routeName: 'erp-demand',
+        label: 'Demanda',
+        roles: ['admin', 'buyer'],
+      },
+      {
+        key: 'routes',
+        routeName: 'erp-routes',
+        label: 'Rutas',
+        roles: ['admin', 'logistics'],
+      },
+      {
+        key: 'activity',
+        routeName: 'erp-activity',
+        label: 'Actividad',
+        roles: ['admin', 'buyer', 'logistics', 'quality'],
+      },
     ]
     if (!current) return []
     return all.filter((entry) => entry.roles.includes(current))

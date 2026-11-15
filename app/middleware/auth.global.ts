@@ -24,6 +24,17 @@ const ALWAYS_ACCESSIBLE = new Set(['reset-password', 'verify-email'])
  */
 const ENTRY_ROUTES = new Set(['signin'])
 
+/** Gestión de personas: administración y mandos. */
+const MANAGER_ROUTES = new Set([
+  'empleados',
+  'vacaciones-aprobaciones',
+  'reclutamiento',
+  'asistente',
+])
+
+/** Configuración de la empresa: solo administración. */
+const ADMIN_ROUTES = new Set(['ajustes'])
+
 function baseName(name: unknown): string {
   if (typeof name !== 'string') return ''
   const index = name.indexOf('___')
@@ -57,5 +68,18 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // Salvaguarda: nunca redirigir a la misma ruta.
     if (target === to.fullPath) return
     return navigateTo(target)
+  }
+
+  // Defensa en profundidad: ocultar el enlace no basta; si alguien escribe la
+  // URL a mano tampoco debe entrar en secciones que no le corresponden.
+  const role = state.value?.user.role
+  const home = localePath('/')
+  const denied =
+    (ADMIN_ROUTES.has(name) && role !== 'admin') ||
+    (MANAGER_ROUTES.has(name) && role === 'employee')
+
+  if (denied) {
+    if (home === to.fullPath) return
+    return navigateTo(home, { replace: true })
   }
 })

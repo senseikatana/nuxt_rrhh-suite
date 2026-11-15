@@ -104,14 +104,18 @@ const rrhhTools = computed(() => [
     tone: 'emerald' as const,
     badge: 'F3',
   },
-  {
-    title: 'Reclutamiento',
-    description: 'Ofertas y candidatos',
-    to: '/reclutamiento',
-    icon: 'i-lucide-user-plus',
-    tone: 'sky' as const,
-    badge: 'F4',
-  },
+  ...(isManager.value
+    ? [
+        {
+          title: 'Reclutamiento',
+          description: 'Ofertas y candidatos',
+          to: '/reclutamiento',
+          icon: 'i-lucide-user-plus',
+          tone: 'sky' as const,
+          badge: 'F4',
+        },
+      ]
+    : []),
   {
     title: 'Denuncias',
     description: 'Canal de denuncias interno',
@@ -141,14 +145,12 @@ const erpTools = computed(() => {
     routes: 'Planificación de transporte',
     activity: 'Registro de cambios y auditoría',
   }
-  return nav
-    .filter((entry) => entry.key !== 'dashboard')
-    .map((entry) => ({
-      title: entry.label,
-      description: descByKey[entry.key] ?? '',
-      to: entry.to,
-      icon: iconByKey[entry.key] ?? 'i-lucide-box',
-    }))
+  return nav.map((entry) => ({
+    title: entry.label,
+    description: descByKey[entry.key] ?? '',
+    to: localePath({ name: entry.routeName }),
+    icon: iconByKey[entry.key] ?? 'i-lucide-box',
+  }))
 })
 
 const hasErp = computed(() => erpSession.role.value !== null)
@@ -211,7 +213,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
           hint="abiertos"
           icon="i-lucide-shopping-cart"
           tone="sky"
-          :to="localePath('/erp/sales')"
+          :to="localePath({ name: 'erp-sales' })"
         />
         <BentoTile
           title="En calidad"
@@ -219,7 +221,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
           hint="compras por revisar"
           icon="i-lucide-shopping-bag"
           tone="rose"
-          :to="localePath('/erp/purchases')"
+          :to="localePath({ name: 'erp-purchases' })"
         />
         <BentoTile
           title="Inventario"
@@ -227,7 +229,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
           hint="artículos bajo mínimo"
           icon="i-lucide-warehouse"
           tone="emerald"
-          :to="localePath('/erp/warehouse')"
+          :to="localePath({ name: 'erp-warehouse' })"
         />
       </template>
     </div>
@@ -266,15 +268,7 @@ const hasErp = computed(() => erpSession.role.value !== null)
     </section>
 
     <!-- Pie de acceso completo -->
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <BentoTile
-        size="wide"
-        title="Panel ERP"
-        description="Indicadores, alertas y estado operativo del negocio"
-        icon="i-lucide-layout-grid"
-        tone="sky"
-        :to="localePath('/erp')"
-      />
+    <div class="grid grid-cols-1 gap-4">
       <BentoTile
         size="wide"
         title="Mi cuenta"
