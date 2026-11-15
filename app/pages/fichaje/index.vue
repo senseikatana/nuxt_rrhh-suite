@@ -213,6 +213,7 @@ function exportRegister() {
       title="Fichaje y jornada"
       subtitle="Registra tu entrada y salida y consulta las horas trabajadas, el balance y las incidencias."
     >
+      <AiActionButton module="fichaje" label="Corregir con IA" prompt="Necesito corregir un fichaje. Pregúntame el empleado, la fecha, la hora y si es entrada o salida." />
       <UButton
         v-if="isManager"
         color="neutral"

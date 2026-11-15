@@ -187,6 +187,7 @@ onMounted(async () => {
 <template>
   <div class="space-y-6">
     <PageHeader title="Turnos" subtitle="Cuadrante semanal por empleado con patrones de turno.">
+      <AiActionButton module="turnos" label="Con IA" prompt="Asigna turnos al equipo de esta semana. Pregúntame empleado, día y turno si te faltan." />
       <div class="flex items-center gap-2">
         <UButton variant="soft" color="neutral" icon="i-lucide-chevron-left" @click="changeWeek(-1)" />
         <span class="min-w-40 text-center text-sm font-medium text-slate-700">{{ weekLabel }}</span>

@@ -1,10 +1,24 @@
 import { z } from 'zod'
 import { runAgent } from '../../services/ai/agent'
 import { aiConfigured, aiConfig } from '../../services/ai/client'
+import type { AiModule } from '../../services/ai/tools'
 import { getContext } from '../../utils/hr'
 import { isManagerOrAdmin } from '../../utils/session'
 
+const MODULES = [
+  'contenido',
+  'empleados',
+  'fichaje',
+  'turnos',
+  'gastos',
+  'nominas',
+  'reclutamiento',
+  'vacaciones',
+  'denuncias',
+] as const
+
 const bodySchema = z.object({
+  module: z.enum(MODULES).optional(),
   messages: z
     .array(
       z.object({
@@ -71,6 +85,7 @@ export default defineEventHandler(async (event) => {
   const result = await runAgent(
     { db, user, employee, org, event },
     parsed.data.messages,
+    parsed.data.module as AiModule | undefined,
   )
 
   return {

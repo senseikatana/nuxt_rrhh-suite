@@ -221,6 +221,7 @@ onMounted(async () => {
       title="Reclutamiento"
       subtitle="Ofertas publicadas, candidaturas y proceso de selección por etapas."
     >
+      <AiActionButton module="reclutamiento" label="Crear con IA" prompt="Publica una oferta de empleo. Pregúntame el puesto, el departamento y las condiciones si te faltan." />
       <UButton icon="i-lucide-plus" @click="jobFormOpen = !jobFormOpen">Nueva oferta</UButton>
     </PageHeader>
 

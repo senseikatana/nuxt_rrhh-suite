@@ -109,6 +109,7 @@ function roleColor(role: string | null): 'primary' | 'info' | 'neutral' {
       title="Empleados"
       subtitle="Plantilla, departamentos y accesos. Importa desde Excel o exporta el estado actual."
     >
+      <AiActionButton module="empleados" label="Crear con IA" prompt="Da de alta un empleado nuevo. Pregúntame nombre, apellidos, email, puesto, departamento y fecha de alta si te faltan." />
       <UButton
         color="neutral"
         variant="soft"

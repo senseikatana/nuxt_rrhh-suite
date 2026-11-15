@@ -186,7 +186,9 @@ onMounted(loadReports)
     <PageHeader
       title="Canal de denuncias"
       subtitle="Canal trazable y confidencial. No se guarda ningún dato del denunciante."
-    />
+    >
+      <AiActionButton module="denuncias" label="Revisar con IA" prompt="Revisa las denuncias abiertas y propón los siguientes pasos para cada una." />
+    </PageHeader>
 
     <div class="flex flex-wrap gap-2">
       <button

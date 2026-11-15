@@ -261,6 +261,7 @@ async function cancelRequest(id: string) {
       title="Vacaciones y ausencias"
       subtitle="Consulta tu saldo, solicita días y sigue el estado de tus peticiones."
     >
+      <AiActionButton module="vacaciones" label="Con IA" prompt="Crea una solicitud de vacaciones. Pregúntame el empleado y las fechas si te faltan." />
       <UButton to="/vacaciones/calendario" color="neutral" variant="soft" icon="i-lucide-calendar-days">
         Calendario
       </UButton>

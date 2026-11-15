@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
-const { login } = useSession()
+const { login, state: session, logout } = useSession()
 
 const email = ref('admin@onada.test')
 const password = ref('Admin1234!')
@@ -47,6 +47,22 @@ async function submit() {
 
 <template>
   <AuthShell title="Inicia sesión" subtitle="Accede con tu cuenta de la empresa.">
+    <div
+      v-if="session"
+      class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+    >
+      <p class="font-semibold">Ya tienes la sesión iniciada</p>
+      <p class="mt-0.5 text-emerald-700">Has entrado como {{ session.user.email }}.</p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <UButton size="xs" color="success" icon="i-lucide-layout-dashboard" to="/">
+          Ir al panel
+        </UButton>
+        <UButton size="xs" color="neutral" variant="soft" icon="i-lucide-log-out" @click="logout">
+          Cerrar sesión
+        </UButton>
+      </div>
+    </div>
+
     <form class="space-y-4" :data-ready="mounted ? 'true' : 'false'" @submit.prevent="submit">
       <div>
         <label class="mb-1.5 block text-sm font-medium text-slate-700" for="email">Email</label>

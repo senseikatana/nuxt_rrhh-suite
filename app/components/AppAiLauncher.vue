@@ -5,22 +5,15 @@
  * Vive en el layout para estar disponible en cualquier página. A la derecha y
  * por encima de la barra de navegación móvil. Solo se muestra si la IA está
  * configurada y el usuario tiene permisos.
+ *
+ * Las secciones pueden abrirlo con contexto propio mediante `useAssistant()`.
  */
 const route = useRoute()
 const { ready, loaded, refresh } = useAiStatus()
-
-const open = ref(false)
+const { open, module, prompt, nonce, close, toggle } = useAssistant()
 
 // En la propia página del asistente el botón sería redundante.
 const visible = computed(() => loaded.value && ready.value && route.path !== '/asistente')
-
-function toggle() {
-  open.value = !open.value
-}
-
-function close() {
-  open.value = false
-}
 
 function onKey(event: KeyboardEvent) {
   if (event.key === 'Escape') close()
@@ -43,7 +36,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="visible">
-    <!-- Panel -->
     <Transition
       enter-active-class="transition duration-150 ease-out"
       enter-from-class="translate-y-2 opacity-0"
@@ -62,8 +54,10 @@ onBeforeUnmount(() => {
               <UIcon name="i-lucide-sparkles" class="size-4" />
             </span>
             <div>
-              <p class="text-sm font-semibold text-slate-900">Asistente de contenido</p>
-              <p class="text-[11px] text-slate-500">Crea y edita el contenido del sitio</p>
+              <p class="text-sm font-semibold text-slate-900">Asistente</p>
+              <p class="text-[11px] text-slate-500">
+                {{ module ? `Sección: ${module}` : 'Crea y edita contenido del sitio' }}
+              </p>
             </div>
           </div>
           <button
@@ -76,11 +70,16 @@ onBeforeUnmount(() => {
           </button>
         </header>
 
-        <AiChatPanel compact @changed="() => {}" />
+        <AiChatPanel
+          compact
+          :module="module"
+          :seed-prompt="prompt"
+          :seed-nonce="nonce"
+          @changed="() => {}"
+        />
       </section>
     </Transition>
 
-    <!-- Botón flotante -->
     <button
       type="button"
       class="fixed bottom-20 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-500/30 transition hover:scale-105 active:scale-95 lg:bottom-6 lg:right-6"

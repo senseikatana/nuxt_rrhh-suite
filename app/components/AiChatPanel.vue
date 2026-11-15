@@ -18,12 +18,19 @@ interface ChatEntry {
   error?: boolean
 }
 
+import type { AssistantModule } from '~/composables/useAssistant'
+
 const props = withDefaults(
   defineProps<{
     compact?: boolean
     suggestions?: string[]
+    /** Sección activa: filtra las herramientas del agente. */
+    module?: AssistantModule | null
+    /** Texto precargado al abrirse desde una sección. */
+    seedPrompt?: string
+    seedNonce?: number
   }>(),
-  { compact: false, suggestions: () => [] },
+  { compact: false, suggestions: () => [], module: null, seedPrompt: '', seedNonce: 0 },
 )
 
 const emit = defineEmits<{ changed: [] }>()
@@ -34,6 +41,14 @@ const messages = ref<ChatEntry[]>([])
 const input = ref('')
 const sending = ref(false)
 const scroller = ref<HTMLElement | null>(null)
+
+watch(
+  () => [props.seedNonce, props.seedPrompt] as const,
+  () => {
+    if (props.seedPrompt) input.value = props.seedPrompt
+  },
+  { immediate: true },
+)
 
 function errorMessage(e: unknown) {
   const err = e as { statusMessage?: string; data?: { message?: string; statusMessage?: string } }
@@ -59,7 +74,7 @@ async function send(prompt?: string) {
     const history = messages.value.map((entry) => ({ role: entry.role, content: entry.content }))
     const result = await $fetch<{ reply: string; actions: AgentAction[] }>('/api/ai/agent', {
       method: 'POST',
-      body: { messages: history },
+      body: { messages: history, module: props.module ?? undefined },
     })
     messages.value.push({ role: 'assistant', content: result.reply, actions: result.actions })
     if (result.actions?.some((action) => action.ok)) emit('changed')

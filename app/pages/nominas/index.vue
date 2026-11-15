@@ -186,6 +186,7 @@ onMounted(async () => {
       title="Nóminas"
       subtitle="Distribución de nóminas y coste de personal por periodo."
     >
+      <AiActionButton module="nominas" label="Preparar con IA" prompt="Prepara el periodo de nómina del mes actual y pregúntame lo que necesites." />
       <UButton v-if="isManager" icon="i-lucide-calendar-plus" @click="formOpen = !formOpen">
         Nuevo periodo
       </UButton>

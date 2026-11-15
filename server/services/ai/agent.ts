@@ -7,7 +7,7 @@
  * modelo que se atasca no genere un bucle infinito.
  */
 import { chat, type ChatMessage } from './client'
-import { runTool, toolSpecs, type ToolContext } from './tools'
+import { runTool, toolSpecsFor, type AiModule, type ToolContext } from './tools'
 
 export interface AgentAction {
   tool: string
@@ -43,21 +43,28 @@ function errorText(error: unknown): string {
   return typed?.data?.message || typed?.statusMessage || typed?.message || 'Error desconocido'
 }
 
-function systemPrompt(ctx: ToolContext): string {
+function systemPrompt(ctx: ToolContext, module?: AiModule): string {
+  const moduleHint = module
+    ? `\nEl usuario ha abierto el asistente desde la sección "${module}": céntrate en esa tarea y usa sus herramientas.`
+    : ''
+
   return [
-    `Eres el asistente de contenido de RRHH Suite para la empresa "${ctx.org.name}".`,
-    'Ayudas a crear, actualizar y modificar el contenido del sitio: textos de bloques',
-    '(banners, avisos del dashboard, políticas, pie de página) y ofertas de empleo.',
+    `Eres el asistente de RRHH Suite para la empresa "${ctx.org.name}".`,
+    'Ayudas a crear, consultar, actualizar y borrar contenido en todas las secciones:',
+    'empleados y departamentos, turnos, gastos, nóminas, reclutamiento, vacaciones,',
+    'denuncias y bloques de contenido del sitio (banners, avisos, políticas).',
     '',
     'Reglas:',
-    '- Responde siempre en español, de forma breve y concreta.',
+    '- Responde siempre en español, breve y concreto.',
     '- Para cualquier cambio usa las herramientas; nunca inventes que ya está hecho.',
-    '- Antes de modificar o eliminar algo existente, usa list_content o list_job_postings',
-    '  para conocer la clave o el id real.',
-    '- Usa claves de contenido en minúsculas con formato "seccion.nombre", por ejemplo:',
-    '  dashboard.banner, dashboard.welcome, site.footer, policy.vacaciones.',
-    '- Si falta información imprescindible, pide lo mínimo necesario en una sola frase.',
-    '- Cuando termines, resume en una línea qué has cambiado.',
+    '- Antes de modificar o borrar, lista (list_*) para conocer la clave, el id o el email real.',
+    '- Para identificar personas usa el email; para ofertas, el título o el id.',
+    '- Las fechas van en formato YYYY-MM-DD y las horas en HH:MM.',
+    '- Usa claves de contenido en minúsculas con formato "seccion.nombre",',
+    '  por ejemplo dashboard.banner, dashboard.welcome, site.footer, policy.vacaciones.',
+    '- Si falta un dato imprescindible, pide solo lo mínimo, en una frase.',
+    '- Al terminar, resume en una línea qué has cambiado.',
+    moduleHint,
     '',
     `Contexto: usuario "${ctx.user.name}" con rol "${ctx.user.role}".`,
   ].join('\n')
@@ -66,17 +73,19 @@ function systemPrompt(ctx: ToolContext): string {
 export async function runAgent(
   ctx: ToolContext,
   history: AgentHistoryMessage[],
+  module?: AiModule,
 ): Promise<AgentResult> {
   const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt(ctx) },
+    { role: 'system', content: systemPrompt(ctx, module) },
     ...history.map((message) => ({ role: message.role, content: message.content })),
   ]
 
+  const specs = toolSpecsFor(module)
   const actions: AgentAction[] = []
   let lastText = ''
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    const { message } = await chat({ messages, tools: toolSpecs() })
+    const { message } = await chat({ messages, tools: specs })
     lastText = message.content?.trim() || lastText
 
     const calls = message.tool_calls ?? []
