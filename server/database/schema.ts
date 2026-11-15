@@ -637,6 +637,36 @@ export const whistleMessages = pgTable(
   (t) => [index('whistle_messages_report_idx').on(t.reportId)],
 )
 
+/* ------------------------------------------------------------------ */
+/* Contenido editable del sitio (asistente IA y administración)        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Bloques de contenido con clave estable.
+ *
+ * Es el punto de extensión para que la IA (o una persona) cree, actualice y
+ * modifique los textos del sitio sin tocar código: banners, avisos del
+ * dashboard, políticas, pie de página, etc. El frontend los lee por `key`.
+ */
+export const contentBlocks = pgTable(
+  'content_blocks',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('orgId')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    /** Identificador estable que usa la web, p. ej. `dashboard.banner`. */
+    key: text('key').notNull(),
+    locale: text('locale').notNull().default('es'),
+    title: text('title'),
+    body: text('body').notNull(),
+    updatedBy: text('updatedBy').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+    updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex('content_blocks_org_key_locale_uq').on(t.orgId, t.key, t.locale)],
+)
+
 /* ================================================================== */
 /* Módulo ERP (migrado desde FastAPI + SQLAlchemy)                     */
 /* Multi-tenant: cada fila va ligada a una organización (ex company).   */

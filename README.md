@@ -312,6 +312,34 @@ docker run --env-file .env -p 3000:3000 rrhh-suite
 
 La app aplica las migraciones al arrancar.
 
+## Asistente de contenido (IA)
+
+La sección **Asistente IA** permite crear, actualizar y modificar contenido del sitio
+hablando en lenguaje natural. El agente está limitado a herramientas concretas (nunca
+ejecuta SQL) y cada escritura queda en la auditoría como `ai.tool.<herramienta>`.
+
+```bash
+# Gateway compatible con la API de OpenAI (FreeLLMAPI, LiteLLM, Ollama, OpenRouter…)
+AI_BASE_URL=http://127.0.0.1:31415/v1
+AI_API_KEY=freellmapi-…
+AI_MODEL=auto
+```
+
+Herramientas disponibles:
+
+| Herramienta | Efecto |
+|---|---|
+| `list_content` / `upsert_content` / `delete_content` | Bloques de contenido (`dashboard.banner`, `site.footer`, …) |
+| `list_job_postings` / `create_job_posting` / `update_job_posting` | Ofertas de empleo |
+| `list_departments` | Consulta de departamentos |
+
+Solo administración y mandos pueden usar el asistente, con un límite de 15 peticiones
+por minuto y usuario. Sin `AI_API_KEY` la sección se muestra desactivada y el resto de la
+app funciona con normalidad.
+
+> ⚠️ En Cloudflare Workers el gateway debe ser accesible por HTTPS desde internet: un
+> `AI_BASE_URL` con `127.0.0.1` solo funciona en local.
+
 ## Módulos siguientes
 
 | Fase | Módulo | Estado |

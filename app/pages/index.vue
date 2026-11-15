@@ -20,6 +20,20 @@ const { data: calendar } = await useAsyncData<CalendarResponse>('dash-calendar',
   requestFetch('/api/leave/calendar', { query: { year } }),
 )
 
+interface ContentBlock {
+  key: string
+  title: string | null
+  body: string
+  updatedAt: string
+}
+
+// Aviso editable desde el asistente de contenido (clave `dashboard.banner`).
+const { data: banner } = await useAsyncData<ContentBlock | null>('dash-banner', () =>
+  requestFetch<ContentBlock | null>('/api/content', { query: { key: 'dashboard.banner' } }).catch(
+    () => null,
+  ),
+)
+
 const { data: pending } = await useAsyncData<LeaveRequestRow[]>('dash-pending', () =>
   isManager.value
     ? requestFetch('/api/leave/requests', { query: { scope: 'team', status: 'pending', year } })
@@ -226,6 +240,17 @@ async function approveRequest(id: string) {
 
 <template>
   <div class="space-y-6">
+    <div
+      v-if="banner"
+      class="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3"
+    >
+      <UIcon name="i-lucide-megaphone" class="mt-0.5 size-5 shrink-0 text-sky-700" />
+      <div>
+        <p v-if="banner.title" class="text-sm font-semibold text-sky-900">{{ banner.title }}</p>
+        <p class="whitespace-pre-line text-sm text-sky-800">{{ banner.body }}</p>
+      </div>
+    </div>
+
     <div class="flex flex-col gap-4 rounded-3xl bg-slate-900 p-6 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between sm:p-8">
       <div>
         <p class="text-sm text-slate-400">{{ formatDate(new Date()) }} · {{ state?.organization.name }}</p>

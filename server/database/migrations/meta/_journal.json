@@ -36,6 +36,13 @@
       "when": 1794740667272,
       "tag": "0004_add_audit_ip_useragent",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794748522412,
+      "tag": "0005_public_wallow",
+      "breakpoints": true
     }
   ]
 }
